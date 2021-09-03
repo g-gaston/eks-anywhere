@@ -26,7 +26,7 @@ var vsphereRmVmsCmd = &cobra.Command{
 			return err
 		}
 
-		err = vsphereRmVms(cmd.Context(), clusterName, viper.GetBool("dry-run"))
+		err = vsphereRmVms(cmd.Context(), clusterName, viper.GetString("folder"), viper.GetBool("dry-run"))
 		if err != nil {
 			log.Fatalf("Error removing vms: %v", err)
 		}
@@ -39,17 +39,18 @@ func init() {
 
 	vsphereRmCmd.AddCommand(vsphereRmVmsCmd)
 	vsphereRmVmsCmd.Flags().Bool("dry-run", false, "Dry run flag")
+	vsphereRmVmsCmd.Flags().String("folder", "", "VMs folder")
 	err = viper.BindPFlags(vsphereRmVmsCmd.Flags())
 	if err != nil {
 		log.Fatalf("Error initializing flags: %v", err)
 	}
 }
 
-func vsphereRmVms(ctx context.Context, clusterName string, dryRun bool) error {
+func vsphereRmVms(ctx context.Context, clusterName, folder string, dryRun bool) error {
 	executableBuilder, err := executables.NewExecutableBuilder(ctx, executables.DefaultEksaImage())
 	if err != nil {
 		return fmt.Errorf("unable to initialize executables: %v", err)
 	}
 	tmpWriter, _ := filewriter.NewWriter("rmvms")
-	return executableBuilder.BuildGovcExecutable(tmpWriter).CleanupVms(ctx, clusterName, dryRun)
+	return executableBuilder.BuildGovcExecutable(tmpWriter).CleanupVmsInFolder(ctx, clusterName, folder, dryRun)
 }

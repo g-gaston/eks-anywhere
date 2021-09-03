@@ -376,7 +376,20 @@ func (g *Govc) validateAndSetupCreds() (map[string]string, error) {
 	return envMap, nil
 }
 
+func (g *Govc) CleanupVmsInFolder(ctx context.Context, clusterName, folderName string, dryRun bool) error {
+	folderAbsPath, err := g.findFolder(ctx, folderName)
+	if err != nil {
+		return err
+	}
+
+	return g.cleanupVms(ctx, clusterName, folderAbsPath, dryRun)
+}
+
 func (g *Govc) CleanupVms(ctx context.Context, clusterName string, dryRun bool) error {
+	return g.cleanupVms(ctx, clusterName, ".", dryRun)
+}
+
+func (g *Govc) cleanupVms(ctx context.Context, clusterName, folderAbsPath string, dryRun bool) error {
 	envMap, err := g.validateAndSetupCreds()
 	if err != nil {
 		return fmt.Errorf("failed govc validations: %v", err)
@@ -385,7 +398,7 @@ func (g *Govc) CleanupVms(ctx context.Context, clusterName string, dryRun bool) 
 	var params []string
 	var result bytes.Buffer
 
-	params = strings.Fields("find -type VirtualMachine -name " + clusterName + "*")
+	params = []string{"find", folderAbsPath, "-type", "VirtualMachine", "-name", clusterName + "*"}
 	result, err = g.executable.ExecuteWithEnv(ctx, envMap, params...)
 	if err != nil {
 		return fmt.Errorf("error getting vm list: %v", err)
@@ -408,6 +421,25 @@ func (g *Govc) CleanupVms(ctx context.Context, clusterName string, dryRun bool) 
 		return fmt.Errorf("failure reading output of vm list")
 	}
 	return nil
+}
+
+func (g *Govc) findFolder(ctx context.Context, folderName string) (folderAbsPath string, err error) {
+	result, err := g.exec(ctx, "find", ".", "-type", "Folder", "-name", folderName)
+	if err != nil {
+		return "", fmt.Errorf("failed trying to find folder [%s]: %v", folderName, err)
+	}
+
+	findResponse := strings.TrimSpace(result.String())
+	responseLines := strings.Split(findResponse, "/n")
+
+	switch len(responseLines) {
+	case 0:
+		return "", nil
+	case 1:
+		return responseLines[0], nil
+	default:
+		return "", fmt.Errorf("found [%d] folders matching folder name [%s], need only one", len(responseLines), folderName)
+	}
 }
 
 func (g *Govc) ValidateVCenterSetup(ctx context.Context, datacenterConfig *v1alpha1.VSphereDatacenterConfig, selfSigned *bool) error {
