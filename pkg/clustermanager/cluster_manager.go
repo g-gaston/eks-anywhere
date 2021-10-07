@@ -39,6 +39,7 @@ const (
 )
 
 type ClusterManager struct {
+	*Upgrader
 	clusterClient   ClusterClient
 	writer          filewriter.FileWriter
 	networking      Networking
@@ -81,6 +82,7 @@ type ClusterManagerOpt func(*ClusterManager)
 
 func New(clusterClient ClusterClient, networking Networking, writer filewriter.FileWriter, opts ...ClusterManagerOpt) *ClusterManager {
 	c := &ClusterManager{
+		Upgrader:        NewUpgrader(clusterClient),
 		clusterClient:   clusterClient,
 		writer:          writer,
 		networking:      networking,
