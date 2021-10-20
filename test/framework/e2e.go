@@ -50,6 +50,7 @@ type E2ETest struct {
 	OIDCConfig            *v1alpha1.OIDCConfig
 	GitOpsConfig          *v1alpha1.GitOpsConfig
 	ProxyConfig           *v1alpha1.ProxyConfiguration
+	EksACommandsVLevel    string
 }
 
 type E2ETestOpt func(e *E2ETest)
@@ -62,6 +63,7 @@ func NewE2ETest(t *testing.T, provider Provider, opts ...E2ETestOpt) *E2ETest {
 		ClusterName:           getClusterName(),
 		clusterFillers:        make([]api.ClusterFiller, 0),
 		KubectlClient:         buildKubectl(t),
+		EksACommandsVLevel:    "4",
 	}
 
 	for _, opt := range opts {
@@ -73,15 +75,21 @@ func NewE2ETest(t *testing.T, provider Provider, opts ...E2ETestOpt) *E2ETest {
 	return e
 }
 
-func WithClusterFiller(f api.ClusterFiller) E2ETestOpt {
+func WithClusterFiller(f ...api.ClusterFiller) E2ETestOpt {
 	return func(e *E2ETest) {
-		e.clusterFillers = append(e.clusterFillers, f)
+		e.clusterFillers = append(e.clusterFillers, f...)
 	}
 }
 
 func WithClusterConfigLocationOverride(path string) E2ETestOpt {
 	return func(e *E2ETest) {
 		e.ClusterConfigLocation = path
+	}
+}
+
+func WithVLevel(level int) E2ETestOpt {
+	return func(e *E2ETest) {
+		e.EksACommandsVLevel = fmt.Sprint(level)
 	}
 }
 
@@ -94,7 +102,10 @@ type Provider interface {
 
 func (e *E2ETest) GenerateClusterConfig() {
 	e.RunEKSA("anywhere", "generate", "clusterconfig", e.ClusterName, "-p", e.Provider.Name(), ">", e.ClusterConfigLocation)
+	e.FillClusterConfig()
+}
 
+func (e *E2ETest) FillClusterConfig() {
 	clusterFillersFromProvider := e.Provider.ClusterConfigFillers()
 	clusterConfigFillers := make([]api.ClusterFiller, 0, len(e.clusterFillers)+len(clusterFillersFromProvider))
 	clusterConfigFillers = append(clusterConfigFillers, e.clusterFillers...)
@@ -102,7 +113,7 @@ func (e *E2ETest) GenerateClusterConfig() {
 	e.ClusterConfigB = e.customizeClusterConfig(clusterConfigFillers...)
 	e.ProviderConfigB = e.Provider.CustomizeProviderConfig(e.ClusterConfigLocation)
 	e.buildClusterConfigFile()
-	e.cleanup(func() {
+	e.Cleanup(func() {
 		os.Remove(e.ClusterConfigLocation)
 	})
 }
@@ -112,13 +123,13 @@ func (e *E2ETest) ImportImages() {
 }
 
 func (e *E2ETest) CreateCluster() {
-	createClusterArgs := []string{"anywhere", "create", "cluster", "-f", e.ClusterConfigLocation, "-v", "4"}
+	createClusterArgs := []string{"anywhere", "create", "cluster", "-f", e.ClusterConfigLocation, "-v", e.EksACommandsVLevel}
 	if getBundlesOverride() == "true" {
 		createClusterArgs = append(createClusterArgs, "--bundles-override", defaultBundleReleaseManifestFile)
 	}
 
 	e.RunEKSA(createClusterArgs...)
-	e.cleanup(func() {
+	e.Cleanup(func() {
 		os.RemoveAll(e.ClusterName)
 	})
 }
@@ -161,7 +172,7 @@ func (e *E2ETest) UpgradeCluster(opts ...E2ETestOpt) {
 	}
 	e.buildClusterConfigFile()
 
-	upgradeClusterArgs := []string{"anywhere", "upgrade", "cluster", "-f", e.ClusterConfigLocation, "-v", "4"}
+	upgradeClusterArgs := []string{"anywhere", "upgrade", "cluster", "-f", e.ClusterConfigLocation, "-v", e.EksACommandsVLevel}
 	if getBundlesOverride() == "true" {
 		upgradeClusterArgs = append(upgradeClusterArgs, "--bundles-override", defaultBundleReleaseManifestFile)
 	}
@@ -201,7 +212,7 @@ func (e *E2ETest) buildClusterConfigFile() {
 }
 
 func (e *E2ETest) DeleteCluster() {
-	e.RunEKSA("anywhere", "delete", "cluster", e.ClusterName, "-v", "4")
+	e.RunEKSA("anywhere", "delete", "cluster", e.ClusterName, "-v", e.EksACommandsVLevel)
 }
 
 func (e *E2ETest) Run(name string, args ...string) {
@@ -247,7 +258,7 @@ func (e *E2ETest) customizeClusterConfig(fillers ...api.ClusterFiller) []byte {
 	return b
 }
 
-func (e *E2ETest) cleanup(f func()) {
+func (e *E2ETest) Cleanup(f func()) {
 	e.T.Cleanup(func() {
 		if !e.T.Failed() {
 			f()

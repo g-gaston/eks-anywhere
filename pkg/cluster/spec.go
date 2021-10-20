@@ -36,9 +36,7 @@ type Spec struct {
 	GitOpsConfig        *eksav1alpha1.GitOpsConfig
 	releasesManifestURL string
 	bundlesManifestURL  string
-	configFS            embed.FS
-	httpClient          *http.Client
-	userAgent           string
+	reader              *ManifestReader
 	VersionsBundle      *VersionsBundle
 	eksdRelease         *eksdv1alpha1.Release
 	Bundles             *v1alpha1.Bundles
@@ -52,9 +50,13 @@ func (s *Spec) DeepCopy() *Spec {
 		GitOpsConfig:        s.GitOpsConfig.DeepCopy(),
 		releasesManifestURL: s.releasesManifestURL,
 		bundlesManifestURL:  s.bundlesManifestURL,
-		configFS:            s.configFS,
-		httpClient:          s.httpClient,
-		userAgent:           s.userAgent,
+		reader: &ManifestReader{
+			&Reader{
+				configFS:   s.reader.configFS,
+				httpClient: s.reader.httpClient,
+				userAgent:  s.reader.userAgent,
+			},
+		},
 		VersionsBundle: &VersionsBundle{
 			VersionsBundle: s.VersionsBundle.VersionsBundle.DeepCopy(),
 			KubeDistro:     s.VersionsBundle.KubeDistro.deepCopy(),
@@ -121,7 +123,7 @@ func WithReleasesManifest(manifestURL string) SpecOpt {
 
 func WithEmbedFS(embedFS embed.FS) SpecOpt {
 	return func(s *Spec) {
-		s.configFS = embedFS
+		s.reader.configFS = embedFS
 	}
 }
 
@@ -145,9 +147,13 @@ func NewSpec(clusterConfigPath string, cliVersion version.Info, opts ...SpecOpt)
 
 	s := &Spec{
 		releasesManifestURL: releasesManifestURL,
-		configFS:            configFS,
-		httpClient:          &http.Client{},
-		userAgent:           userAgent("cli", cliVersion.GitVersion),
+		reader: &ManifestReader{
+			&Reader{
+				configFS:   configFS,
+				httpClient: &http.Client{},
+				userAgent:  userAgent("cli", cliVersion.GitVersion),
+			},
+		},
 	}
 	for _, opt := range opts {
 		opt(s)
@@ -212,9 +218,13 @@ func NewSpec(clusterConfigPath string, cliVersion version.Info, opts ...SpecOpt)
 func BuildSpecFromBundles(cluster *eksav1alpha1.Cluster, bundles *v1alpha1.Bundles, opts ...SpecOpt) (*Spec, error) {
 	s := &Spec{
 		releasesManifestURL: releasesManifestURL,
-		configFS:            configFS,
-		httpClient:          &http.Client{},
-		userAgent:           userAgent("unknown", "unknown"),
+		reader: &ManifestReader{
+			&Reader{
+				configFS:   configFS,
+				httpClient: &http.Client{},
+				userAgent:  userAgent("unknown", "unknown"),
+			},
+		},
 	}
 	for _, opt := range opts {
 		opt(s)
@@ -266,7 +276,7 @@ func (s *Spec) GetBundles(cliVersion version.Info) (*v1alpha1.Bundles, error) {
 	}
 
 	logger.V(4).Info("Reading bundles manifest", "url", bundlesURL)
-	content, err := s.readFile(bundlesURL)
+	content, err := s.reader.ReadFile(bundlesURL)
 	if err != nil {
 		return nil, err
 	}
@@ -285,7 +295,7 @@ func (s *Spec) getRelease(cliVersion version.Info) (*v1alpha1.EksARelease, error
 		return nil, fmt.Errorf("invalid cli version: %v", err)
 	}
 
-	releases, err := s.getReleases(s.releasesManifestURL)
+	releases, err := s.reader.GetReleases(s.releasesManifestURL)
 	if err != nil {
 		return nil, err
 	}
@@ -304,9 +314,9 @@ func (s *Spec) getRelease(cliVersion version.Info) (*v1alpha1.EksARelease, error
 	return nil, fmt.Errorf("eksa release %s does not exist in manifest %s", cliVersion, s.releasesManifestURL)
 }
 
-func (s *Spec) getReleases(releasesManifest string) (*v1alpha1.Release, error) {
-	logger.V(4).Info("Reading releases manifest", "url", releasesManifestURL)
-	content, err := s.readFile(releasesManifest)
+func (m *ManifestReader) GetReleases(releasesManifest string) (*v1alpha1.Release, error) {
+	logger.V(4).Info("Reading releases manifest", "url", releasesManifest)
+	content, err := m.ReadFile(releasesManifest)
 	if err != nil {
 		return nil, err
 	}
@@ -319,7 +329,29 @@ func (s *Spec) getReleases(releasesManifest string) (*v1alpha1.Release, error) {
 	return releases, nil
 }
 
-func (s *Spec) readFile(uri string) ([]byte, error) {
+type ManifestReader struct {
+	*Reader
+}
+
+func NewManifestReader(component string) *ManifestReader {
+	return &ManifestReader{NewReader(component)}
+}
+
+type Reader struct {
+	configFS   embed.FS
+	httpClient *http.Client
+	userAgent  string
+}
+
+func NewReader(component string) *Reader {
+	return &Reader{
+		configFS:   configFS,
+		httpClient: &http.Client{},
+		userAgent:  userAgent(component, "unknown"),
+	}
+}
+
+func (r *Reader) ReadFile(uri string) ([]byte, error) {
 	url, err := url.Parse(uri)
 	if err != nil {
 		return nil, fmt.Errorf("can't build cluster spec, invalid release manifest url: %v", err)
@@ -327,22 +359,22 @@ func (s *Spec) readFile(uri string) ([]byte, error) {
 
 	switch url.Scheme {
 	case httpsScheme:
-		return s.readHttpFile(uri)
+		return r.readHttpFile(uri)
 	case embedScheme:
-		return s.readEmbedFile(url)
+		return r.readEmbedFile(url)
 	default:
 		return readLocalFile(uri)
 	}
 }
 
-func (s *Spec) readHttpFile(uri string) ([]byte, error) {
+func (r *Reader) readHttpFile(uri string) ([]byte, error) {
 	request, err := http.NewRequest("GET", uri, nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed creating http GET request for downloading file: %v", err)
 	}
 
-	request.Header.Set("User-Agent", s.userAgent)
-	resp, err := s.httpClient.Do(request)
+	request.Header.Set("User-Agent", r.userAgent)
+	resp, err := r.httpClient.Do(request)
 	if err != nil {
 		return nil, fmt.Errorf("failed reading file from url [%s] for cluster spec: %v", uri, err)
 	}
@@ -356,8 +388,8 @@ func (s *Spec) readHttpFile(uri string) ([]byte, error) {
 	return data, nil
 }
 
-func (s *Spec) readEmbedFile(url *url.URL) ([]byte, error) {
-	data, err := s.configFS.ReadFile(strings.TrimPrefix(url.Path, "/"))
+func (r *Reader) readEmbedFile(url *url.URL) ([]byte, error) {
+	data, err := r.configFS.ReadFile(strings.TrimPrefix(url.Path, "/"))
 	if err != nil {
 		return nil, fmt.Errorf("failed reading embed file [%s] for cluster spec: %v", url.Path, err)
 	}
@@ -450,7 +482,7 @@ func kubeDistroRepository(image *eksdv1alpha1.AssetImage) (repo, tag string) {
 }
 
 func (s *Spec) getEksdRelease(versionsBundle *v1alpha1.VersionsBundle) (*eksdv1alpha1.Release, error) {
-	content, err := s.readFile(versionsBundle.EksD.EksDReleaseUrl)
+	content, err := s.reader.ReadFile(versionsBundle.EksD.EksDReleaseUrl)
 	if err != nil {
 		return nil, err
 	}
@@ -466,9 +498,13 @@ func (s *Spec) getEksdRelease(versionsBundle *v1alpha1.VersionsBundle) (*eksdv1a
 func GetEksdRelease(cliVersion version.Info, clusterConfig *eksav1alpha1.Cluster) (*v1alpha1.EksDRelease, error) {
 	s := &Spec{
 		releasesManifestURL: releasesManifestURL,
-		configFS:            configFS,
-		httpClient:          &http.Client{},
-		userAgent:           userAgent("cli", cliVersion.GitVersion),
+		reader: &ManifestReader{
+			&Reader{
+				configFS:   configFS,
+				httpClient: &http.Client{},
+				userAgent:  userAgent("cli", cliVersion.GitVersion),
+			},
+		},
 	}
 
 	bundles, err := s.GetBundles(cliVersion)
@@ -495,7 +531,7 @@ func (s *Spec) LoadManifest(manifest v1alpha1.Manifest) (*Manifest, error) {
 		return nil, fmt.Errorf("invalid manifest URI: %v", err)
 	}
 
-	content, err := s.readFile(manifest.URI)
+	content, err := s.reader.ReadFile(manifest.URI)
 	if err != nil {
 		return nil, fmt.Errorf("failed to load manifest: %v", err)
 	}

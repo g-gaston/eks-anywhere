@@ -406,6 +406,10 @@ func (c *ClusterManager) EKSAClusterSpecChanged(ctx context.Context, cluster *ty
 				return true, nil
 			}
 		}
+	case v1alpha1.DockerDatacenterKind:
+		// Docker datacenter and machine configs don't have any fields that can change
+		// This code belongs in the provider
+		return false, nil
 	default:
 		// Run upgrade flow
 		return true, nil
