@@ -158,3 +158,31 @@ func TestDockerKubernetes120UpgradeFromLatestCli(t *testing.T) {
 	)
 	runUpgradeFromLatestCLIFlow(test)
 }
+
+func TestDockerKubernetes120UpgradeFromLatestCliExternalEtcd(t *testing.T) {
+	test := framework.NewE2ETest(t,
+		framework.NewDocker(t),
+		framework.WithVLevel(9),
+		framework.WithClusterFiller(
+			api.WithKubernetesVersion(v1alpha1.Kube120),
+			api.WithControlPlaneCount(1),
+			api.WithWorkerNodeCount(1),
+			api.WithExternalEtcdTopology(1),
+		),
+	)
+	runUpgradeFromLatestCLIFlow(test)
+}
+
+func TestVSphereKubernetes120UpgradeFromLatestCli(t *testing.T) {
+	test := framework.NewE2ETest(t,
+		framework.NewVSphere(t, framework.WithUbuntu120()),
+		framework.WithVLevel(9),
+		framework.WithClusterFiller(
+			api.WithKubernetesVersion(v1alpha1.Kube120),
+			api.WithControlPlaneCount(1),
+			api.WithWorkerNodeCount(1),
+			api.WithStackedEtcdTopology(),
+		),
+	)
+	runUpgradeFromLatestCLIFlow(test)
+}
