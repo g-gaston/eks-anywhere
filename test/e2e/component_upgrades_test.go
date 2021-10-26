@@ -6,10 +6,12 @@ import (
 	"archive/tar"
 	"bytes"
 	"compress/gzip"
+	"context"
 	"fmt"
 	"io"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 	"testing"
 
@@ -17,6 +19,7 @@ import (
 	"github.com/aws/eks-anywhere/pkg/api/v1alpha1"
 	"github.com/aws/eks-anywhere/pkg/cluster"
 	"github.com/aws/eks-anywhere/pkg/eksctl"
+	"github.com/aws/eks-anywhere/pkg/executables"
 	"github.com/aws/eks-anywhere/pkg/features"
 	"github.com/aws/eks-anywhere/pkg/validations"
 	"github.com/aws/eks-anywhere/test/framework"
@@ -40,6 +43,7 @@ func runUpgradeFromLatestCLIFlow(test *framework.E2ETest) {
 	// Enable core component upgrades
 	os.Setenv(features.ComponentsUpgradesEnvVar, "true")
 	test.UpgradeCluster()
+	logPodImages(test)
 	test.DeleteCluster()
 }
 
@@ -108,8 +112,6 @@ func untar(destinationFolder string, r io.Reader) error {
 			return err
 		}
 
-		fmt.Println(strings.TrimPrefix(header.Name, "./"))
-
 		if header != nil && strings.TrimPrefix(header.Name, "./") == releaseBinaryName {
 			break
 		}
@@ -145,10 +147,36 @@ func createCluster(test *framework.E2ETest, eksaBinaryPath string) {
 	})
 }
 
+func logPodImages(test *framework.E2ETest) {
+	pods, err := test.KubectlClient.GetPods(context.Background(),
+		executables.WithKubeconfig(test.KubeconfigFilePath()),
+		executables.WithAllNamespaces(),
+	)
+	if err != nil {
+		test.T.Fatal(err)
+	}
+
+	podImagesSet := make(map[string]struct{}, len(pods))
+	for _, p := range pods {
+		for _, container := range p.Spec.Containers {
+			podImagesSet[container.Image] = struct{}{}
+		}
+	}
+
+	podImages := make([]string, 0, len(podImagesSet))
+	for image := range podImagesSet {
+		podImages = append(podImages, image)
+	}
+
+	sort.Strings(podImages)
+	test.T.Logf("Pod images:\n%s", strings.Join(podImages, "\n"))
+}
+
 func TestDockerKubernetes120UpgradeFromLatestCli(t *testing.T) {
 	test := framework.NewE2ETest(t,
 		framework.NewDocker(t),
-		framework.WithVLevel(9),
+		framework.WithVLevel(3),
+		framework.WithClusterName("Docker120CoreUpgrade"),
 		framework.WithClusterFiller(
 			api.WithKubernetesVersion(v1alpha1.Kube120),
 			api.WithControlPlaneCount(1),
@@ -159,10 +187,11 @@ func TestDockerKubernetes120UpgradeFromLatestCli(t *testing.T) {
 	runUpgradeFromLatestCLIFlow(test)
 }
 
-func TestDockerKubernetes120UpgradeFromLatestCliExternalEtcd(t *testing.T) {
+func TestDockerKubernetes120ExternalEtcdUpgradeFromLatestCli(t *testing.T) {
 	test := framework.NewE2ETest(t,
 		framework.NewDocker(t),
-		framework.WithVLevel(9),
+		framework.WithVLevel(3),
+		framework.WithClusterName("Docker120ExtEtcdCoreUpgrade"),
 		framework.WithClusterFiller(
 			api.WithKubernetesVersion(v1alpha1.Kube120),
 			api.WithControlPlaneCount(1),
@@ -173,15 +202,61 @@ func TestDockerKubernetes120UpgradeFromLatestCliExternalEtcd(t *testing.T) {
 	runUpgradeFromLatestCLIFlow(test)
 }
 
-func TestVSphereKubernetes120UpgradeFromLatestCli(t *testing.T) {
+func TestVSphereKubernetes121UbuntuUpgradeFromLatestCli(t *testing.T) {
+	test := framework.NewE2ETest(t,
+		framework.NewVSphere(t, framework.WithUbuntu121()),
+		framework.WithVLevel(3),
+		framework.WithClusterName("Ubuntu121CoreUpgradeLastCli"),
+		framework.WithClusterFiller(
+			api.WithKubernetesVersion(v1alpha1.Kube121),
+			api.WithControlPlaneCount(1),
+			api.WithWorkerNodeCount(1),
+			api.WithStackedEtcdTopology(),
+		),
+	)
+	runUpgradeFromLatestCLIFlow(test)
+}
+
+func TestVSphereKubernetes120UbuntuExternalEtcdUpgradeFromLatestCli(t *testing.T) {
 	test := framework.NewE2ETest(t,
 		framework.NewVSphere(t, framework.WithUbuntu120()),
-		framework.WithVLevel(9),
+		framework.WithVLevel(3),
+		framework.WithClusterName("Ubuntu120ExtEtcdCoreUpgradeLastCli"),
+		framework.WithClusterFiller(
+			api.WithKubernetesVersion(v1alpha1.Kube120),
+			api.WithControlPlaneCount(1),
+			api.WithWorkerNodeCount(1),
+			api.WithExternalEtcdTopology(1),
+		),
+	)
+	runUpgradeFromLatestCLIFlow(test)
+}
+
+func TestVSphereKubernetes120BottlerocketUpgradeFromLatestCli(t *testing.T) {
+	test := framework.NewE2ETest(t,
+		framework.NewVSphere(t, framework.WithBottleRocket120()),
+		framework.WithVLevel(3),
+		framework.WithClusterName("BR120CoreUpgradeLastCli"),
 		framework.WithClusterFiller(
 			api.WithKubernetesVersion(v1alpha1.Kube120),
 			api.WithControlPlaneCount(1),
 			api.WithWorkerNodeCount(1),
 			api.WithStackedEtcdTopology(),
+		),
+	)
+	runUpgradeFromLatestCLIFlow(test)
+}
+
+func TestVSphereKubernetes121BottlerocketExternalEtcdUpgradeFromLatestCli(t *testing.T) {
+	test := framework.NewE2ETest(t,
+		framework.NewVSphere(t, framework.WithBottleRocket121()),
+		framework.WithVLevel(3),
+		framework.WithClusterName("BR121ExtEtcdCoreUpgradeLastCli"),
+		framework.WithClusterFiller(
+			api.WithKubernetesVersion(v1alpha1.Kube121),
+			api.WithControlPlaneCount(1),
+			api.WithWorkerNodeCount(1),
+			api.WithExternalEtcdTopology(1),
 		),
 	)
 	runUpgradeFromLatestCLIFlow(test)
