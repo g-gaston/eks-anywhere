@@ -42,6 +42,7 @@ func runUpgradeFromLatestCLIFlow(test *framework.E2ETest) {
 	createCluster(test, latestReleaseBinaryPath)
 	// Enable core component upgrades
 	os.Setenv(features.ComponentsUpgradesEnvVar, "true")
+	logPodImages(test)
 	test.UpgradeCluster()
 	logPodImages(test)
 	test.DeleteCluster()
