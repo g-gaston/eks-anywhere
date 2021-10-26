@@ -93,6 +93,12 @@ func WithVLevel(level int) E2ETestOpt {
 	}
 }
 
+func WithClusterName(name string) E2ETestOpt {
+	return func(e *E2ETest) {
+		e.ClusterName = strings.ToLower(name)
+	}
+}
+
 type Provider interface {
 	Name() string
 	CustomizeProviderConfig(file string) []byte
@@ -269,11 +275,11 @@ func (e *E2ETest) Cleanup(f func()) {
 func (e *E2ETest) cluster() *types.Cluster {
 	return &types.Cluster{
 		Name:           e.ClusterName,
-		KubeconfigFile: e.kubeconfigFilePath(),
+		KubeconfigFile: e.KubeconfigFilePath(),
 	}
 }
 
-func (e *E2ETest) kubeconfigFilePath() string {
+func (e *E2ETest) KubeconfigFilePath() string {
 	return filepath.Join(e.ClusterName, fmt.Sprintf("%s-eks-a-cluster.kubeconfig", e.ClusterName))
 }
 
@@ -285,7 +291,7 @@ func (e *E2ETest) GetEksaVSphereMachineConfigs() []v1alpha1.VSphereMachineConfig
 		machineConfigNames = append(machineConfigNames, workerNodeConf.MachineGroupRef.Name)
 	}
 
-	kubeconfig := e.kubeconfigFilePath()
+	kubeconfig := e.KubeconfigFilePath()
 	ctx := context.Background()
 
 	machineConfigs := make([]v1alpha1.VSphereMachineConfig, 0, len(machineConfigNames))
