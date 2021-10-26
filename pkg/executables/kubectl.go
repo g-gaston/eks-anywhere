@@ -442,7 +442,11 @@ func WithServer(s string) KubectlOpt {
 }
 
 func WithCluster(c *types.Cluster) KubectlOpt {
-	return appendOpt("--kubeconfig", c.KubeconfigFile)
+	return WithKubeconfig(c.KubeconfigFile)
+}
+
+func WithKubeconfig(kubeconfigFile string) KubectlOpt {
+	return appendOpt("--kubeconfig", kubeconfigFile)
 }
 
 func WithNamespace(n string) KubectlOpt {
