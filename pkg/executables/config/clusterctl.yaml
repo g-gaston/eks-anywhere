@@ -91,6 +91,5 @@ images:
   bootstrap-etcdadm-controller/kube-rbac-proxy:
     repository: {{ .EtcdadmControllerKubeRbacProxyRepository }}
     tag: {{ .EtcdadmControllerKubeRbacProxyTag }} #org one is v0.4.0
-cert-manager:
-  timeout: 30m
+cert-manager-timeout: 30m
 cert-manager-version: {{.CertManagerVersion}}
