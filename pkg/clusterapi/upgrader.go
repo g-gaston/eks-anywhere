@@ -30,7 +30,7 @@ func (u *Upgrader) Upgrade(ctx context.Context, managementCluster *types.Cluster
 		return nil, nil
 	}
 
-	capiChangeDiff := u.capiChangeDiff(currentSpec, newSpec, provider)
+	capiChangeDiff := capiChangeDiff(currentSpec, newSpec, provider)
 	if capiChangeDiff == nil {
 		logger.V(1).Info("Nothing to upgrade for CAPI")
 		return nil, nil
@@ -63,7 +63,7 @@ func (c *CAPIChangeDiff) toChangeDiff() *types.ChangeDiff {
 	return types.NewChangeDiff(r...)
 }
 
-func (u *Upgrader) capiChangeDiff(currentSpec, newSpec *cluster.Spec, provider providers.Provider) *CAPIChangeDiff {
+func capiChangeDiff(currentSpec, newSpec *cluster.Spec, provider providers.Provider) *CAPIChangeDiff {
 	changeDiff := &CAPIChangeDiff{}
 	componentChanged := false
 
@@ -141,4 +141,8 @@ func (u *Upgrader) capiChangeDiff(currentSpec, newSpec *cluster.Spec, provider p
 	}
 
 	return changeDiff
+}
+
+func ChangeDiff(currentSpec, newSpec *cluster.Spec, provider providers.Provider) *types.ChangeDiff {
+	return capiChangeDiff(currentSpec, newSpec, provider).toChangeDiff()
 }
