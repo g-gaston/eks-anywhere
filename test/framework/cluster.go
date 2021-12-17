@@ -170,9 +170,7 @@ func (e *ClusterE2ETest) CreateCluster(opts ...CommandOpt) {
 func (e *ClusterE2ETest) createCluster(opts ...CommandOpt) {
 	e.T.Logf("Creating cluster %s", e.ClusterName)
 	createClusterArgs := []string{"create", "cluster", "-f", e.ClusterConfigLocation, "-v", "4"}
-	if getBundlesOverride() == "true" {
-		createClusterArgs = append(createClusterArgs, "--bundles-override", defaultBundleReleaseManifestFile)
-	}
+	createClusterArgs = ProcessBundlesOverride(createClusterArgs)
 
 	e.RunEKSA(createClusterArgs, opts...)
 	e.cleanup(func() {
@@ -223,9 +221,7 @@ func (e *ClusterE2ETest) upgradeCluster(clusterOpts []ClusterE2ETestOpt, command
 	e.buildClusterConfigFile()
 
 	upgradeClusterArgs := []string{"upgrade", "cluster", "-f", e.ClusterConfigLocation, "-v", "4"}
-	if getBundlesOverride() == "true" {
-		upgradeClusterArgs = append(upgradeClusterArgs, "--bundles-override", defaultBundleReleaseManifestFile)
-	}
+	upgradeClusterArgs = ProcessBundlesOverride(upgradeClusterArgs)
 
 	e.RunEKSA(upgradeClusterArgs, commandOpts...)
 }
@@ -276,9 +272,7 @@ func (e *ClusterE2ETest) DeleteCluster(opts ...CommandOpt) {
 
 func (e *ClusterE2ETest) deleteCluster(opts ...CommandOpt) {
 	deleteClusterArgs := []string{"delete", "cluster", e.ClusterName, "-v", "4"}
-	if getBundlesOverride() == "true" {
-		deleteClusterArgs = append(deleteClusterArgs, "--bundles-override", defaultBundleReleaseManifestFile)
-	}
+	deleteClusterArgs = ProcessBundlesOverride(deleteClusterArgs)
 	e.RunEKSA(deleteClusterArgs, opts...)
 }
 
@@ -419,4 +413,12 @@ func setEksctlVersionEnvVar() error {
 		}
 	}
 	return nil
+}
+
+func ProcessBundlesOverride(commandArgs []string) []string {
+	if getBundlesOverride() == "true" {
+		commandArgs = append(commandArgs, "--bundles-override", defaultBundleReleaseManifestFile)
+	}
+
+	return commandArgs
 }
