@@ -127,7 +127,7 @@ func RunTests(conf instanceRunConf) (testInstanceID string, testCommandResult *t
 
 func (e *E2ESession) runTests(regex string) (testCommandResult *testCommandResult, err error) {
 	logger.V(1).Info("Running e2e tests", "regex", regex)
-	command := "./bin/gotestsum --junitfile=junit-testing.xml --raw-command --format=standard-verbose --ignore-non-json-output-lines -- ./bin/test2json -t -p e2e ./bin/e2e.test -test.v"
+	command := "GOVERSION=go1.16.6 ./bin/gotestsum --junitfile=junit-testing.xml --raw-command --format=standard-verbose --ignore-non-json-output-lines -- ./bin/test2json -t -p e2e ./bin/e2e.test -test.v"
 
 	if regex != "" {
 		command = fmt.Sprintf("%s -test.run %s", command, regex)
@@ -228,5 +228,8 @@ func logTestGroups(instancesConf []instanceRunConf) {
 func logResult(t *testCommandResult) {
 	// Go tests send non-test log output through stderr
 	// So stderr will have the cli output
+	fmt.Println("Stderr")
 	fmt.Println(string(t.StdErr))
+	fmt.Println("Stdout")
+	fmt.Println(string(t.StdOut))
 }
