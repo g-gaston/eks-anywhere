@@ -1,10 +1,13 @@
+//go:build e2e
 // +build e2e
 
 package e2e
 
 import (
+	"context"
 	"fmt"
 	"log"
+	"os/exec"
 	"testing"
 
 	"github.com/aws/eks-anywhere/internal/pkg/api"
@@ -23,6 +26,25 @@ func runSimpleFlow(test *framework.ClusterE2ETest) {
 	test.GenerateClusterConfig()
 	test.CreateCluster()
 	test.DeleteCluster()
+}
+
+func runMockFlow(t *testing.T) {
+	t.Log("Starting mock flow")
+	for i := 0; i < 10; i++ {
+		cmd := exec.CommandContext(context.Background(), "echo", fmt.Sprintf("Line of log %d", i))
+		if err := cmd.Run(); err != nil {
+			t.Fatal(err)
+		}
+	}
+	t.Log("Finished mock flow")
+}
+
+func TestMock1Flow(t *testing.T) {
+	runMockFlow(t)
+}
+
+func TestMock2Flow(t *testing.T) {
+	runMockFlow(t)
 }
 
 func TestDockerKubernetes120SimpleFlow(t *testing.T) {
@@ -44,7 +66,6 @@ func TestDockerKubernetes121SimpleFlow(t *testing.T) {
 }
 
 func TestEksa060LatestPatchDockerKubernetes121SimpleFlow(t *testing.T) {
-
 	test := framework.NewClusterE2ETest(
 		t,
 		framework.NewDocker(t),
