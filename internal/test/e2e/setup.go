@@ -15,7 +15,9 @@ import (
 	e2etests "github.com/aws/eks-anywhere/test/framework"
 )
 
-var requiredFiles = []string{cliBinary, e2eBinary, eksctlBinary}
+var requiredUploadFiles = []string{cliBinary, e2eBinary}
+
+var requiredExtraFiles = []string{eksctlBinary, gotestsum, test2json}
 
 const (
 	cliBinary                  = "eksctl-anywhere"
@@ -24,20 +26,22 @@ const (
 	bundlesReleaseManifestFile = "local-bundle-release.yaml"
 	eksAComponentsManifestFile = "local-eksa-components.yaml"
 	testNameFile               = "e2e-test-name"
+	gotestsum                  = "gotestsum"
+	test2json                  = "test2json"
 )
 
 type E2ESession struct {
-	session             *session.Session
-	amiId               string
-	instanceProfileName string
-	storageBucket       string
-	jobId               string
-	subnetId            string
-	instanceId          string
-	controlPlaneIP      string
-	testEnvVars         map[string]string
-	bundlesOverride     bool
-	requiredFiles       []string
+	session                                 *session.Session
+	amiId                                   string
+	instanceProfileName                     string
+	storageBucket                           string
+	jobId                                   string
+	subnetId                                string
+	instanceId                              string
+	controlPlaneIP                          string
+	testEnvVars                             map[string]string
+	bundlesOverride                         bool
+	requiredUploadFiles, requiredExtraFiles []string
 }
 
 func newSession(amiId, instanceProfileName, storageBucket, jobId, subnetId, controlPlaneIP string, bundlesOverride bool) (*E2ESession, error) {
@@ -56,7 +60,8 @@ func newSession(amiId, instanceProfileName, storageBucket, jobId, subnetId, cont
 		controlPlaneIP:      controlPlaneIP,
 		testEnvVars:         make(map[string]string),
 		bundlesOverride:     bundlesOverride,
-		requiredFiles:       requiredFiles,
+		requiredUploadFiles: requiredUploadFiles,
+		requiredExtraFiles:  requiredExtraFiles,
 	}
 
 	return e, nil
@@ -146,9 +151,9 @@ func (e *E2ESession) uploadRequiredFile(file string) error {
 
 func (e *E2ESession) uploadRequiredFiles() error {
 	if e.bundlesOverride {
-		e.requiredFiles = append(e.requiredFiles, bundlesReleaseManifestFile)
+		e.requiredUploadFiles = append(e.requiredUploadFiles, bundlesReleaseManifestFile)
 		if _, err := os.Stat(fmt.Sprintf("bin/%s", eksAComponentsManifestFile)); err == nil {
-			e.requiredFiles = append(e.requiredFiles, eksAComponentsManifestFile)
+			e.requiredUploadFiles = append(e.requiredUploadFiles, eksAComponentsManifestFile)
 		} else if errors.Is(err, os.ErrNotExist) {
 			logger.V(0).Info("WARNING: no components manifest override found, but bundle override is present. " +
 				"If the EKS-A components have changed be sure to provide a components override!")
@@ -156,12 +161,10 @@ func (e *E2ESession) uploadRequiredFiles() error {
 			return err
 		}
 	}
-	for _, file := range e.requiredFiles {
-		if file != "eksctl" {
-			err := e.uploadRequiredFile(file)
-			if err != nil {
-				return err
-			}
+	for _, file := range e.requiredUploadFiles {
+		err := e.uploadRequiredFile(file)
+		if err != nil {
+			return err
 		}
 	}
 
@@ -172,9 +175,12 @@ func (e *E2ESession) downloadRequiredFileInInstance(file string) error {
 	logger.V(1).Info("Downloading from s3 in instance", "file", file)
 
 	var command string
-	if file == "eksctl" {
+	switch file {
+	case "eksctl":
 		command = fmt.Sprintf("aws s3 cp s3://%s/eksctl/%[2]s ./bin/ && chmod 645 ./bin/%[2]s", e.storageBucket, file)
-	} else {
+	case gotestsum, test2json:
+		command = fmt.Sprintf("aws s3 cp s3://%s/extrabin/%[2]s ./bin/ && chmod 645 ./bin/%[2]s", e.storageBucket, file)
+	default:
 		command = fmt.Sprintf("aws s3 cp s3://%s/%s/%[3]s ./bin/ && chmod 645 ./bin/%[3]s", e.storageBucket, e.jobId, file)
 	}
 
@@ -211,12 +217,27 @@ func (e *E2ESession) uploadDiagnosticArchiveFromInstance(testName string) {
 	}
 }
 
+func (e *E2ESession) uploadJUnitReport(testName string) {
+	junitFile := "junit-testing.xml"
+	logger.V(1).Info("Uploading JUnit report to s3 bucket")
+	command := fmt.Sprintf("aws s3 cp /home/e2e/ %s/%s/ --recursive --exclude \"*\" --include \"%s\"",
+		e.generatedArtifactsBucketPath(), testName, junitFile)
+
+	if err := ssm.Run(e.session, e.instanceId, command); err != nil {
+		logger.Error(err, "error uploading JUnit report from instance")
+	} else {
+		logger.V(1).Info("Successfully uploaded JUnit report files to S3")
+	}
+}
+
 func (e *E2ESession) generatedArtifactsBucketPath() string {
 	return fmt.Sprintf("s3://%s/%s/generated-artifacts", e.storageBucket, e.jobId)
 }
 
 func (e *E2ESession) downloadRequiredFilesInInstance() error {
-	for _, file := range e.requiredFiles {
+	// Download everything uploaded + extra files
+	// TODO: don't modify slice
+	for _, file := range append(e.requiredUploadFiles, e.requiredExtraFiles...) {
 		err := e.downloadRequiredFileInInstance(file)
 		if err != nil {
 			return err
