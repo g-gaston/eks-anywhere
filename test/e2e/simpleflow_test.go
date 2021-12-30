@@ -7,6 +7,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"os"
 	"os/exec"
 	"testing"
 
@@ -32,6 +33,8 @@ func runMockFlow(t *testing.T) {
 	t.Log("Starting mock flow")
 	for i := 0; i < 10; i++ {
 		cmd := exec.CommandContext(context.Background(), "echo", fmt.Sprintf("Line of log %d", i))
+		cmd.Stderr = os.Stderr
+		cmd.Stdout = os.Stdout
 		if err := cmd.Run(); err != nil {
 			t.Fatal(err)
 		}
