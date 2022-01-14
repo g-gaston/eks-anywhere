@@ -3106,12 +3106,93 @@ rules:
   - configmaps/status
   - namespaces
   - namespaces/status
+  - services
+  - services/status
   verbs:
   - get
   - list
   - patch
   - update
   - watch
+  - create
+- apiGroups:
+  - rbac.authorization.k8s.io
+  resources:
+  - clusterroles
+  - clusterroles/status
+  - clusterrolebindings
+  - clusterrolebindings/status
+  - rolebindings
+  - rolebindings/status
+  verbs:
+  - get
+  - list
+  - patch
+  - update
+  - watch
+  - create
+- apiGroups:
+  - apps
+  resources:
+  - daemonsets
+  - daemonsets/status
+  verbs:
+  - get
+  - list
+  - patch
+  - update
+  - watch
+  - create
+- apiGroups:
+  - ""
+  resources:
+  - events
+  verbs:
+  - create
+  - patch
+  - update
+- apiGroups:
+  - ""
+  resources:
+  - nodes
+  verbs:
+  - '*'
+- apiGroups:
+  - ""
+  resources:
+  - nodes/status
+  verbs:
+  - patch
+- apiGroups:
+  - ""
+  resources:
+  - serviceaccounts
+  - endpoints
+  verbs:
+  - create
+  - get
+  - list
+  - watch
+  - update
+- apiGroups:
+  - ""
+  resources:
+  - persistentvolumes
+  verbs:
+  - get
+  - list
+  - watch
+  - update
+- apiGroups:
+  - coordination.k8s.io
+  resources:
+  - leases
+  verbs:
+  - get
+  - watch
+  - list
+  - delete
+  - update
   - create
 ---
 apiVersion: rbac.authorization.k8s.io/v1
@@ -3287,6 +3368,34 @@ metadata:
   namespace: eksa-system
 spec:
   selfSigned: {}
+---
+apiVersion: admissionregistration.k8s.io/v1
+kind: MutatingWebhookConfiguration
+metadata:
+  creationTimestamp: null
+  name: eksa-mutating-webhook-configuration
+webhooks:
+- admissionReviewVersions:
+  - v1
+  - v1beta1
+  clientConfig:
+    service:
+      name: eksa-webhook-service
+      namespace: eksa-system
+      path: /mutate-anywhere-eks-amazonaws-com-v1alpha1-cluster
+  failurePolicy: Fail
+  name: mutation.cluster.anywhere.amazonaws.com
+  rules:
+  - apiGroups:
+    - anywhere.eks.amazonaws.com
+    apiVersions:
+    - v1alpha1
+    operations:
+    - CREATE
+    - UPDATE
+    resources:
+    - clusters
+  sideEffects: None
 ---
 apiVersion: admissionregistration.k8s.io/v1
 kind: ValidatingWebhookConfiguration
