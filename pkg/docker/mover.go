@@ -5,44 +5,55 @@ import (
 	"fmt"
 )
 
-type DockerClient interface {
-	PullImage(ctx context.Context, image string) error
-	PushImage(ctx context.Context, image string, endpoint string) error
+type ImageDiskLoader interface {
 	LoadFromFile(ctx context.Context, filepath string) error
+}
+
+type ImageDiskWriter interface {
 	SaveToFile(ctx context.Context, filepath string, images ...string) error
 }
 
-type (
-	ImageSourceLoader      func(ctx context.Context, client DockerClient, images ...string) error
-	ImageDestinationLoader func(ctx context.Context, client DockerClient, images ...string) error
-)
+type ImagePusher interface {
+	PushImage(ctx context.Context, image string, endpoint string) error
+}
+
+type ImagePuller interface {
+	PullImage(ctx context.Context, image string) error
+}
+
+type DockerClient interface {
+	ImageDiskLoader
+	ImageDiskWriter
+	ImagePuller
+	ImagePusher
+}
+
+type ImageSource interface {
+	Load(ctx context.Context, images ...string) error
+}
+
+type ImageDestination interface {
+	Write(ctx context.Context, images ...string) error
+}
 
 type ImageMover struct {
-	client             DockerClient
-	loadSource         ImageSourceLoader
-	writeToDestination ImageDestinationLoader
+	source      ImageSource
+	destination ImageDestination
 }
 
-func NewImageMover(client DockerClient) *ImageMover {
+func NewImageMover(source ImageSource, destination ImageDestination) *ImageMover {
 	return &ImageMover{
-		client: client,
+		source:      source,
+		destination: destination,
 	}
-}
-
-func (m *ImageMover) From(source ImageSourceLoader) {
-	m.loadSource = source
-}
-
-func (m *ImageMover) To(destination ImageDestinationLoader) {
-	m.writeToDestination = destination
 }
 
 func (m *ImageMover) Move(ctx context.Context, images ...string) error {
-	if err := m.loadSource(ctx, m.client, images...); err != nil {
+	if err := m.source.Load(ctx, images...); err != nil {
 		return fmt.Errorf("loading docker image mover source: %v", err)
 	}
 
-	if err := m.writeToDestination(ctx, m.client, images...); err != nil {
+	if err := m.destination.Write(ctx, images...); err != nil {
 		return fmt.Errorf("writing images to destination with image mover: %v", err)
 	}
 

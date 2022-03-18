@@ -20,12 +20,12 @@ func TestNewRegistryDestination(t *testing.T) {
 	registry := "https://registry"
 	images := []string{"image1:1", "image2:2"}
 	ctx := context.Background()
-	dstLoader := docker.NewRegistryDestination(registry)
+	dstLoader := docker.NewRegistryDestination(client, registry)
 	for _, i := range images {
 		client.EXPECT().PushImage(ctx, i, registry)
 	}
 
-	g.Expect(dstLoader(ctx, client, images...)).To(Succeed())
+	g.Expect(dstLoader.Write(ctx, images...)).To(Succeed())
 }
 
 func TestNewRegistryDestinationError(t *testing.T) {
@@ -36,10 +36,10 @@ func TestNewRegistryDestinationError(t *testing.T) {
 	registry := "https://registry"
 	images := []string{"image1:1", "image2:2"}
 	ctx := context.Background()
-	dstLoader := docker.NewRegistryDestination(registry)
+	dstLoader := docker.NewRegistryDestination(client, registry)
 	client.EXPECT().PushImage(ctx, images[0], registry).Return(errors.New("error pushing"))
 
-	g.Expect(dstLoader(ctx, client, images...)).To(MatchError(ContainSubstring("error pushing")))
+	g.Expect(dstLoader.Write(ctx, images...)).To(MatchError(ContainSubstring("error pushing")))
 }
 
 func TestNewOriginalRegistrySource(t *testing.T) {
@@ -49,12 +49,12 @@ func TestNewOriginalRegistrySource(t *testing.T) {
 
 	images := []string{"image1:1", "image2:2"}
 	ctx := context.Background()
-	dstLoader := docker.NewOriginalRegistrySource()
+	dstLoader := docker.NewOriginalRegistrySource(client)
 	for _, i := range images {
 		client.EXPECT().PullImage(ctx, i)
 	}
 
-	g.Expect(dstLoader(ctx, client, images...)).To(Succeed())
+	g.Expect(dstLoader.Load(ctx, images...)).To(Succeed())
 }
 
 func TestOriginalRegistrySourceError(t *testing.T) {
@@ -64,8 +64,8 @@ func TestOriginalRegistrySourceError(t *testing.T) {
 
 	images := []string{"image1:1", "image2:2"}
 	ctx := context.Background()
-	dstLoader := docker.NewOriginalRegistrySource()
+	dstLoader := docker.NewOriginalRegistrySource(client)
 	client.EXPECT().PullImage(ctx, images[0]).Return(errors.New("error pulling"))
 
-	g.Expect(dstLoader(ctx, client, images...)).To(MatchError(ContainSubstring("error pulling")))
+	g.Expect(dstLoader.Load(ctx, images...)).To(MatchError(ContainSubstring("error pulling")))
 }

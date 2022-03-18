@@ -12,63 +12,52 @@ import (
 	"github.com/aws/eks-anywhere/pkg/docker/mocks"
 )
 
-func TestImageMoverMove(t *testing.T) {
-	g := NewWithT(t)
+type moverTest struct {
+	*WithT
+	ctx    context.Context
+	src    *mocks.MockImageSource
+	dst    *mocks.MockImageDestination
+	images []string
+}
+
+func newMoverTest(t *testing.T) *moverTest {
 	ctrl := gomock.NewController(t)
-	client := mocks.NewMockDockerClient(ctrl)
-	ctx := context.Background()
 
-	images := []string{"image1:1", "image2:2"}
+	return &moverTest{
+		WithT:  NewWithT(t),
+		ctx:    context.Background(),
+		src:    mocks.NewMockImageSource(ctrl),
+		dst:    mocks.NewMockImageDestination(ctrl),
+		images: []string{"image1:1", "image2:2"},
+	}
+}
 
-	m := docker.NewImageMover(client)
-	m.From(dummySource)
-	m.To(dummyDst)
+func TestImageMoverMove(t *testing.T) {
+	tt := newMoverTest(t)
+	tt.src.EXPECT().Load(tt.ctx, tt.images[0], tt.images[1])
+	tt.dst.EXPECT().Write(tt.ctx, tt.images[0], tt.images[1])
 
-	g.Expect(m.Move(ctx, images...)).To(Succeed())
+	m := docker.NewImageMover(tt.src, tt.dst)
+	tt.Expect(m.Move(tt.ctx, tt.images...)).To(Succeed())
 }
 
 func TestImageMoverMoveErrorSource(t *testing.T) {
-	g := NewWithT(t)
-	ctrl := gomock.NewController(t)
-	client := mocks.NewMockDockerClient(ctrl)
-	ctx := context.Background()
-
-	images := []string{"image1:1", "image2:2"}
+	tt := newMoverTest(t)
 	errorMsg := "fake error"
-	sourceError := func(_ context.Context, _ docker.DockerClient, _ ...string) error {
-		return errors.New(errorMsg)
-	}
+	tt.src.EXPECT().Load(tt.ctx, tt.images[0], tt.images[1]).Return(errors.New(errorMsg))
 
-	m := docker.NewImageMover(client)
-	m.From(sourceError)
-	m.To(dummyDst)
+	m := docker.NewImageMover(tt.src, tt.dst)
 
-	g.Expect(m.Move(ctx, images...)).To(MatchError("loading docker image mover source: fake error"))
+	tt.Expect(m.Move(tt.ctx, tt.images...)).To(MatchError("loading docker image mover source: fake error"))
 }
 
 func TestImageMoverMoveErrorDestination(t *testing.T) {
-	g := NewWithT(t)
-	ctrl := gomock.NewController(t)
-	client := mocks.NewMockDockerClient(ctrl)
-	ctx := context.Background()
-
-	images := []string{"image1:1", "image2:2"}
+	tt := newMoverTest(t)
 	errorMsg := "fake error"
-	dstError := func(_ context.Context, _ docker.DockerClient, _ ...string) error {
-		return errors.New(errorMsg)
-	}
+	tt.src.EXPECT().Load(tt.ctx, tt.images[0], tt.images[1])
+	tt.dst.EXPECT().Write(tt.ctx, tt.images[0], tt.images[1]).Return(errors.New(errorMsg))
 
-	m := docker.NewImageMover(client)
-	m.From(dummySource)
-	m.To(dstError)
+	m := docker.NewImageMover(tt.src, tt.dst)
 
-	g.Expect(m.Move(ctx, images...)).To(MatchError("writing images to destination with image mover: fake error"))
-}
-
-func dummySource(_ context.Context, _ docker.DockerClient, _ ...string) error {
-	return nil
-}
-
-func dummyDst(_ context.Context, _ docker.DockerClient, _ ...string) error {
-	return nil
+	tt.Expect(m.Move(tt.ctx, tt.images...)).To(MatchError("writing images to destination with image mover: fake error"))
 }
