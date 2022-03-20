@@ -1,0 +1,74 @@
+package manifests_test
+
+import (
+	"testing"
+
+	"github.com/golang/mock/gomock"
+	. "github.com/onsi/gomega"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
+	"github.com/aws/eks-anywhere/internal/test/mocks"
+	"github.com/aws/eks-anywhere/pkg/manifests"
+	"github.com/aws/eks-anywhere/pkg/releases"
+	releasev1 "github.com/aws/eks-anywhere/release/api/v1alpha1"
+)
+
+func TestReaderReadBundlesForVersion(t *testing.T) {
+	g := NewWithT(t)
+	ctrl := gomock.NewController(t)
+	reader := mocks.NewMockReader(ctrl)
+
+	releasesURL := releases.ManifestURL()
+
+	releasesManifest := `apiVersion: anywhere.eks.amazonaws.com/v1alpha1
+kind: Release
+metadata:
+  name: release-1
+spec:
+  releases:
+    - bundleManifestUrl: "https://bundles/bundles.yaml"
+      version: v0.0.1`
+	reader.EXPECT().ReadFile(releasesURL).Return([]byte(releasesManifest), nil)
+
+	bundlesManifest := `apiVersion: anywhere.eks.amazonaws.com/v1alpha1
+kind: Bundles
+metadata:
+  name: bundles-1`
+
+	wantBundles := &releasev1.Bundles{
+		TypeMeta: metav1.TypeMeta{
+			APIVersion: "anywhere.eks.amazonaws.com/v1alpha1",
+			Kind:       "Bundles",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "bundles-1",
+		},
+	}
+
+	reader.EXPECT().ReadFile("https://bundles/bundles.yaml").Return([]byte(bundlesManifest), nil)
+
+	r := manifests.NewReader(reader)
+	g.Expect(r.ReadBundlesForVersion("v0.0.1")).To(Equal(wantBundles))
+}
+
+func TestReaderReadBundlesForVersionErrorVersionNotSupported(t *testing.T) {
+	g := NewWithT(t)
+	ctrl := gomock.NewController(t)
+	reader := mocks.NewMockReader(ctrl)
+
+	releasesURL := releases.ManifestURL()
+
+	releasesManifest := `apiVersion: anywhere.eks.amazonaws.com/v1alpha1
+kind: Release
+metadata:
+  name: release-1
+spec:
+  releases:
+    - bundleManifestUrl: "https://bundles/bundles.yaml"
+      version: v0.0.1`
+	reader.EXPECT().ReadFile(releasesURL).Return([]byte(releasesManifest), nil)
+
+	r := manifests.NewReader(reader)
+	_, err := r.ReadBundlesForVersion("v0.0.2")
+	g.Expect(err).To(MatchError(ContainSubstring("invalid version v0.0.2, no matching release found")))
+}

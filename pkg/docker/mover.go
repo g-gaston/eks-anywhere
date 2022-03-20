@@ -3,6 +3,8 @@ package docker
 import (
 	"context"
 	"fmt"
+
+	"github.com/aws/eks-anywhere/pkg/types"
 )
 
 type ImageDiskLoader interface {
@@ -15,6 +17,11 @@ type ImageDiskWriter interface {
 
 type ImagePusher interface {
 	PushImage(ctx context.Context, image string, endpoint string) error
+}
+
+type ImageTaggerPusher interface {
+	ImagePusher
+	TagImage(ctx context.Context, image string, endpoint string) error
 }
 
 type ImagePuller interface {
@@ -49,13 +56,19 @@ func NewImageMover(source ImageSource, destination ImageDestination) *ImageMover
 }
 
 func (m *ImageMover) Move(ctx context.Context, images ...string) error {
-	if err := m.source.Load(ctx, images...); err != nil {
+	uniqueImages := removesDuplicates(images)
+
+	if err := m.source.Load(ctx, uniqueImages...); err != nil {
 		return fmt.Errorf("loading docker image mover source: %v", err)
 	}
 
-	if err := m.destination.Write(ctx, images...); err != nil {
+	if err := m.destination.Write(ctx, uniqueImages...); err != nil {
 		return fmt.Errorf("writing images to destination with image mover: %v", err)
 	}
 
 	return nil
+}
+
+func removesDuplicates(images []string) []string {
+	return types.SliceToLookup(images).ToSlice()
 }

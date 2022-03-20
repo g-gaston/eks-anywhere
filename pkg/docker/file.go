@@ -1,6 +1,10 @@
 package docker
 
-import "context"
+import (
+	"context"
+
+	"github.com/aws/eks-anywhere/pkg/logger"
+)
 
 type ImageDiskSource struct {
 	client ImageDiskLoader
@@ -15,6 +19,7 @@ func NewDiskSource(client ImageDiskLoader, file string) *ImageDiskSource {
 }
 
 func (s *ImageDiskSource) Load(ctx context.Context, images ...string) error {
+	logger.Info("Loading images from disk")
 	return s.client.LoadFromFile(ctx, s.file)
 }
 
@@ -31,5 +36,6 @@ func NewDiskDestination(client ImageDiskWriter, file string) *ImageDiskDestinati
 }
 
 func (s *ImageDiskDestination) Write(ctx context.Context, images ...string) error {
+	logger.Info("Writing images to disk")
 	return s.client.SaveToFile(ctx, s.file, images...)
 }

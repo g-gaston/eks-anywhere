@@ -17,9 +17,10 @@ import (
 	"github.com/spf13/viper"
 	"sigs.k8s.io/yaml"
 
-	"github.com/aws/eks-anywhere/pkg/cluster"
 	"github.com/aws/eks-anywhere/pkg/files"
 	"github.com/aws/eks-anywhere/pkg/logger"
+	"github.com/aws/eks-anywhere/pkg/manifests"
+	"github.com/aws/eks-anywhere/pkg/releases"
 	"github.com/aws/eks-anywhere/pkg/version"
 )
 
@@ -34,14 +35,10 @@ var downloadArtifactsopts = &downloadArtifactsOptions{}
 
 func init() {
 	downloadCmd.AddCommand(downloadArtifactsCmd)
-	downloadArtifactsCmd.Flags().StringVarP(&downloadArtifactsopts.fileName, "filename", "f", "", "Filename that contains EKS-A cluster configuration")
+	downloadArtifactsCmd.Flags().StringVarP(&downloadArtifactsopts.fileName, "filename", "f", "", "[Deprecated] This will be ignored: filename that contains EKS-A cluster configuration")
 	downloadArtifactsCmd.Flags().StringVarP(&downloadArtifactsopts.downloadDir, "download-dir", "d", "eks-anywhere-downloads", "Directory to download the artifacts to")
 	downloadArtifactsCmd.Flags().BoolVarP(&downloadArtifactsopts.dryRun, "dry-run", "", false, "Print the manifest URIs without downloading them")
 	downloadArtifactsCmd.Flags().BoolVarP(&downloadArtifactsopts.retainDir, "retain-dir", "r", false, "Do not delete the download folder after creating a tarball")
-	err := downloadArtifactsCmd.MarkFlagRequired("filename")
-	if err != nil {
-		log.Fatalf("Error marking filename flag as required: %v", err)
-	}
 }
 
 var downloadArtifactsCmd = &cobra.Command{
@@ -59,29 +56,23 @@ var downloadArtifactsCmd = &cobra.Command{
 }
 
 func downloadArtifacts(context context.Context, opts *downloadArtifactsOptions) error {
-	cliVersion := version.Get()
-	clusterSpec, err := cluster.NewSpecFromClusterConfig(opts.fileName, cliVersion)
+	reader := files.NewReader()
+	manifestReader := manifests.NewReader(reader)
+
+	bundles, err := manifestReader.ReadBundlesForVersion(version.Get().GitVersion)
 	if err != nil {
 		return err
 	}
-
-	release, err := clusterSpec.GetRelease(cliVersion)
-	if err != nil {
-		return err
-	}
-	bundlesManifestUrl := release.BundleManifestUrl
-
-	reader := files.NewReader(files.WithUserAgent(fmt.Sprintf("eks-a-cli-download/%s", version.Get().GitVersion)))
 
 	// download the eks-a-release.yaml
 	if !opts.dryRun {
-		releaseManifestURL := clusterSpec.GetReleaseManifestUrl()
+		releaseManifestURL := releases.ManifestURL()
 		if err := downloadArtifact(filepath.Join(opts.downloadDir, filepath.Base(releaseManifestURL)), releaseManifestURL, reader); err != nil {
 			return fmt.Errorf("error downloading release manifest: %v", err)
 		}
 	}
 
-	versionBundles := clusterSpec.Bundles.Spec.VersionsBundles
+	versionBundles := bundles.Spec.VersionsBundles
 	for i, bundle := range versionBundles {
 		for component, manifestList := range bundle.Manifests() {
 			for _, manifest := range manifestList {
@@ -97,14 +88,14 @@ func downloadArtifacts(context context.Context, opts *downloadArtifactsOptions) 
 				*manifest = filePath
 			}
 		}
-		clusterSpec.Bundles.Spec.VersionsBundles[i] = bundle
+		bundles.Spec.VersionsBundles[i] = bundle
 	}
 
-	bundleReleaseContent, err := yaml.Marshal(clusterSpec.Bundles)
+	bundleReleaseContent, err := yaml.Marshal(bundles)
 	if err != nil {
 		return fmt.Errorf("error marshaling bundle-release.yaml: %v", err)
 	}
-	bundleReleaseFilePath := filepath.Join(opts.downloadDir, filepath.Base(bundlesManifestUrl))
+	bundleReleaseFilePath := filepath.Join(opts.downloadDir, "bundle-release.yaml")
 	if err = ioutil.WriteFile(bundleReleaseFilePath, bundleReleaseContent, 0o644); err != nil {
 		return err
 	}

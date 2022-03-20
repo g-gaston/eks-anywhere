@@ -127,6 +127,57 @@ func (mr *MockImagePusherMockRecorder) PushImage(ctx, image, endpoint interface{
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "PushImage", reflect.TypeOf((*MockImagePusher)(nil).PushImage), ctx, image, endpoint)
 }
 
+// MockImageTaggerPusher is a mock of ImageTaggerPusher interface.
+type MockImageTaggerPusher struct {
+	ctrl     *gomock.Controller
+	recorder *MockImageTaggerPusherMockRecorder
+}
+
+// MockImageTaggerPusherMockRecorder is the mock recorder for MockImageTaggerPusher.
+type MockImageTaggerPusherMockRecorder struct {
+	mock *MockImageTaggerPusher
+}
+
+// NewMockImageTaggerPusher creates a new mock instance.
+func NewMockImageTaggerPusher(ctrl *gomock.Controller) *MockImageTaggerPusher {
+	mock := &MockImageTaggerPusher{ctrl: ctrl}
+	mock.recorder = &MockImageTaggerPusherMockRecorder{mock}
+	return mock
+}
+
+// EXPECT returns an object that allows the caller to indicate expected use.
+func (m *MockImageTaggerPusher) EXPECT() *MockImageTaggerPusherMockRecorder {
+	return m.recorder
+}
+
+// PushImage mocks base method.
+func (m *MockImageTaggerPusher) PushImage(ctx context.Context, image, endpoint string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "PushImage", ctx, image, endpoint)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// PushImage indicates an expected call of PushImage.
+func (mr *MockImageTaggerPusherMockRecorder) PushImage(ctx, image, endpoint interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "PushImage", reflect.TypeOf((*MockImageTaggerPusher)(nil).PushImage), ctx, image, endpoint)
+}
+
+// TagImage mocks base method.
+func (m *MockImageTaggerPusher) TagImage(ctx context.Context, image, endpoint string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "TagImage", ctx, image, endpoint)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// TagImage indicates an expected call of TagImage.
+func (mr *MockImageTaggerPusherMockRecorder) TagImage(ctx, image, endpoint interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "TagImage", reflect.TypeOf((*MockImageTaggerPusher)(nil).TagImage), ctx, image, endpoint)
+}
+
 // MockImagePuller is a mock of ImagePuller interface.
 type MockImagePuller struct {
 	ctrl     *gomock.Controller
