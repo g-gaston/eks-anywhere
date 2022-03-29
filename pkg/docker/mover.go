@@ -17,6 +17,11 @@ type ImagePusher interface {
 	PushImage(ctx context.Context, image string, endpoint string) error
 }
 
+type ImageTaggerPusher interface {
+	ImagePusher
+	TagImage(ctx context.Context, image string, endpoint string) error
+}
+
 type ImagePuller interface {
 	PullImage(ctx context.Context, image string) error
 }
