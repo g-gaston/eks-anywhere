@@ -347,10 +347,10 @@ func (s *DeleteBootstrapClusterTask) Name() string {
 	return "delete-kind-cluster"
 }
 
-func getManagementCluster(commandContext *task.CommandContext) *types.Cluster {
-	target := commandContext.WorkloadCluster
-	if commandContext.BootstrapCluster != nil && commandContext.BootstrapCluster.ExistingManagement {
-		target = commandContext.BootstrapCluster
-	}
-	return target
-}
+//func getManagementCluster(commandContext *task.CommandContext) *types.Cluster {
+//	target := commandContext.WorkloadCluster
+//	if commandContext.ManagementCluster != nil && commandContext.ManagementCluster.ExistingManagement {
+//		target = commandContext.ManagementCluster
+//	}
+//	return target
+//}

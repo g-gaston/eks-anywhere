@@ -106,16 +106,15 @@ func (uc *upgradeClusterOptions) upgradeCluster(ctx context.Context) error {
 	}
 
 	var cluster *types.Cluster
+	// Self managed
 	if clusterSpec.ManagementCluster == nil {
 		cluster = &types.Cluster{
 			Name:           clusterSpec.Cluster.Name,
 			KubeconfigFile: getKubeconfigPath(clusterSpec.Cluster.Name, uc.wConfig),
 		}
 	} else {
-		cluster = &types.Cluster{
-			Name:           clusterSpec.ManagementCluster.Name,
-			KubeconfigFile: clusterSpec.ManagementCluster.KubeconfigFile,
-		}
+		// Workload + Mgmt
+		cluster = clusterSpec.ManagementCluster
 	}
 
 	validationOpts := &validations.Opts{
@@ -127,7 +126,7 @@ func (uc *upgradeClusterOptions) upgradeCluster(ctx context.Context) error {
 	}
 	upgradeValidations := upgradevalidations.New(validationOpts)
 
-	err = upgradeCluster.Run(ctx, clusterSpec, cluster, upgradeValidations, uc.forceClean)
+	err = upgradeCluster.Run(ctx, clusterSpec, cluster, workloadCluster, upgradeValidations, uc.forceClean)
 	return err
 }
 
