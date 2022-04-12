@@ -288,7 +288,6 @@ func (s *createBootstrapClusterTask) Run(ctx context.Context, commandContext *ta
 
 	bootstrapCluster, err := commandContext.Bootstrapper.CreateBootstrapCluster(ctx, commandContext.ClusterSpec, bootstrapOptions...)
 	commandContext.BootstrapCluster = bootstrapCluster
-	commandContext.ManagementCluster = bootstrapCluster
 	if err != nil {
 		commandContext.SetError(err)
 		return &deleteBootstrapClusterTask{}
@@ -322,7 +321,7 @@ func (s *moveManagementToBootstrapTask) Run(ctx context.Context, commandContext 
 		commandContext.SetError(err)
 		return &CollectDiagnosticsTask{}
 	}
-	// commandContext.ManagementCluster = commandContext.BootstrapCluster
+	commandContext.ManagementCluster = commandContext.BootstrapCluster
 	return &upgradeWorkloadClusterTask{}
 }
 
@@ -362,11 +361,12 @@ func (s *moveManagementToWorkloadTask) Run(ctx context.Context, commandContext *
 		return &updateClusterAndGitResources{}
 	}
 	logger.Info("Moving cluster management from bootstrap to workload cluster")
-	err := commandContext.ClusterManager.MoveCAPI(ctx, commandContext.BootstrapCluster, commandContext.ManagementCluster, commandContext.ManagementCluster.Name, commandContext.ClusterSpec, types.WithNodeRef(), types.WithNodeHealthy())
+	err := commandContext.ClusterManager.MoveCAPI(ctx, commandContext.BootstrapCluster, commandContext.WorkloadCluster, commandContext.ManagementCluster.Name, commandContext.ClusterSpec, types.WithNodeRef(), types.WithNodeHealthy())
 	if err != nil {
 		commandContext.SetError(err)
 		return &CollectDiagnosticsTask{}
 	}
+	commandContext.ManagementCluster = commandContext.WorkloadCluster
 	return &updateClusterAndGitResources{}
 }
 
