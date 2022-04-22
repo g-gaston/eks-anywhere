@@ -139,6 +139,7 @@ Variable names should be concise and descriptive. Prefer single word names. The 
 
 ## References
 
-- Dave Cheney
-- Effective Go
-- Code Review Comments
+- Dave Cheney - https://dave.cheney.net/practical-go/presentations/gophercon-israel.html
+- Peter Bourgon - https://peter.bourgon.org/go-best-practices-2016/
+- Effective Go - https://go.dev/doc/effective_go
+- Code Review Comments - https://github.com/golang/go/wiki/CodeReviewComments
