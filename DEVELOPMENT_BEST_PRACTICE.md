@@ -20,7 +20,11 @@ What constitutes clean code? We want simple and maintable, but how do we define 
 
 ### State
 
+> Shared mutable state is believed by many to be the “root of all evil”, or at least the cause of most of the accidental complexity in our code. And “Complexity is the root cause of the vast majority of problems with software today.” - [Mauro Bieg](https://mb21.github.io/blog/2021/01/23/pure-functional-programming-and-shared-mutable-state.html#the-root-of-all-evil)
 
+Package level state is rarely required. If it is, it should be composed of re-usable constructs defined and exposed from the package itself.
+
+In avoiding package level state we avoid [hidden dependencies and unintended side effects](https://dave.cheney.net/practical-go/presentations/qcon-china.html#_avoid_package_level_state) stemming from global state mutation. Model loosely coupled components by [declaring your dependencies](#dependencies).
 
 ### Names
 
@@ -48,7 +52,7 @@ Variable names should be concise and descriptive. Prefer single word names. The 
 - Constructs
 - Interfaces
 
-### Depencencies
+### <a nane="dependencies"></a> Depencencies
 
 - Accept interfaces, return structs
 - Declare your dependencies
