@@ -53,6 +53,12 @@ Variable names should be concise and descriptive. Prefer single word names. The 
 - Accept interfaces, return structs
 - Declare your dependencies
 
+### Testing
+
+- test using the `_test` idiom
+- Use test to help identify if the package is easy to use for consumers
+- isolating concerns like io
+
 ### Interfaces
 
 - Define the behavior a _consumer_ expects
@@ -92,15 +98,21 @@ Variable names should be concise and descriptive. Prefer single word names. The 
 
 - They're just another dependency, inject them.
 
-- Comments
-- Types
-- Variable initialization
-- Channels
-    - If your API leverages them, inject them
-    - Document channel behavior
-- Testing
-- Naked returns
-- Panicing
+###  Comments
+
+### Types
+
+### Variable initialization
+
+- What forms to preference under what circumstances
+
+### Channels
+- If your API leverages them, inject them
+- Document channel behavior
+
+### Naked returns
+
+### Panicing
 
 ### Package API
 
