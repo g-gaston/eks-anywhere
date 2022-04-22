@@ -24,7 +24,7 @@ What constitutes clean code? We want simple and maintable, but how do we define 
 
 Package level state is rarely required. If it is, it should be composed of re-usable constructs defined and exposed from the package itself.
 
-In avoiding package level state we avoid [hidden dependencies and unintended side effects](https://dave.cheney.net/practical-go/presentations/qcon-china.html#_avoid_package_level_state) stemming from global state mutation. Model loosely coupled components by [declaring your dependencies](#dependencies).
+In avoiding package level state we avoid [hidden dependencies and unintended side effects](https://dave.cheney.net/practical-go/presentations/gophercon-israel.html#_avoid_package_level_state) stemming from global state mutation. Model loosely coupled components by [declaring your dependencies](#dependencies).
 
 ### Names
 
@@ -44,7 +44,7 @@ Functions and methods should adequetly describe their behavior. Generally, they 
 
 ##### Variable names
 
-Variable names should be concise and descriptive. Prefer single word names. The further away from the site of declaration a variable is used, the more descriptive it needs to be. For example, a variable named `n` used 30 lines after declaration makes it unnecessarily difficult to reason what its about at the site of use.
+Variable names should be concise and descriptive. Prefer single word names. The further away from the site of declaration a variable is used, the more descriptive it needs to be. For example, a variable named `n` used 30 lines after declaration makes it unnecessarily difficult to reason what it represents at the site of use.
 
 ### Abstractions
 
