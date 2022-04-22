@@ -53,6 +53,10 @@ Variable names should be concise and descriptive. Prefer single word names. The 
 - Accept interfaces, return structs
 - Declare your dependencies
 
+### Package API
+
+- this might be wrapped up in naming and testing. Do we have more explicit points?
+
 ### Testing
 
 - test using the `_test` idiom
@@ -100,21 +104,34 @@ Variable names should be concise and descriptive. Prefer single word names. The 
 
 ###  Comments
 
+- All public APis should be documented
+- May seem redundant at times, consider documentation from a `godoc` point of view.
+- Packages _should_ contain package level documentation
+- What makes a good comment?
+
 ### Types
+
+- I forgot what this was for...
 
 ### Variable initialization
 
 - What forms to preference under what circumstances
 
 ### Channels
+
 - If your API leverages them, inject them
 - Document channel behavior
 
-### Naked returns
+### Returns
+
+- Return early
+- Naked returns should be avoided
 
 ### Panicing
 
-### Package API
+- General advice is to not panic
+- Exceptions and rationale around invalidity of a program
+
 
 ## References
 
