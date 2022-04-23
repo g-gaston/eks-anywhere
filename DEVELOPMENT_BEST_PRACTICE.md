@@ -131,7 +131,7 @@ Variable names should be concise and descriptive. Prefer single word names. The 
 - Return early
 - Naked returns should be avoided
 
-### Panicing
+### Panicking
 
 - General advice is to not panic
 - Exceptions and rationale around invalidity of a program
