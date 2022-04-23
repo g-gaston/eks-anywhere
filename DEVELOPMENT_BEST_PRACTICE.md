@@ -1,6 +1,6 @@
 # Development Best Practice
 
-Software development is like nature: it's in a constant state of flux and continuously changing. As software engineers, its our responsibility to embrace the flux and write clean code that is _optimized for change_. In doing so, we can rapidly innovate and satisfy customer needs.
+Software development is like nature: it's in a constant state of flux and continuously changing. As software engineers, it's our responsibility to embrace the flux and write clean code that is _optimized for change_. In doing so, we can rapidly innovate and satisfy customer needs.
 
 ## Guiding principles
 
