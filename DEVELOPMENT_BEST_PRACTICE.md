@@ -12,7 +12,7 @@ These principles provide a guide for designing software. At times they may seem 
 - [LoD](https://en.wikipedia.org/wiki/Law_of_Demeter) - The Law of Demeter tells us a construct should talk to their direct dependencies and _only_ their direct dependencies. Reaching to transitive dependencies creates complex layers of interaction that drive toward [spaghetti code](https://en.wikipedia.org/wiki/Spaghetti_code).
 - [KISS](https://people.apache.org/~fhanik/kiss.html) - "Keep it simple, stupid" was coined by the US Navy. Systems should be designed as simply as possible.
 - [YAGNI](https://martinfowler.com/bliki/Yagni.html) - "You aren't gonna need it" if you don't have a concrete use-case, so don't write it.
-- [DRY](https://en.wikipedia.org/wiki/Don%27t_repeat_yourself) - "Don't repeat yourself" suggests you should preference code re-use over duplication. However, you should [avoid hasty abstractions](https://sandimetz.com/blog/2016/1/20/the-wrong-abstraction) as the wrong abstraction can be extremely costly to correct. Instead, lean into small amounts of duplication to help identify the right abstractions through multiple usecases and define the pathway to DRY design.
+- [DRY](https://en.wikipedia.org/wiki/Don%27t_repeat_yourself) - "Don't repeat yourself" suggests you should preference code re-use over duplication. However, you should [avoid hasty abstractions](https://sandimetz.com/blog/2016/1/20/the-wrong-abstraction) as the wrong abstraction can be extremely costly to correct. Instead, lean into small amounts of duplication to help identify the right abstractions through multiple use cases and define the pathway to DRY design.
 
 ## "clean code that is optimized for change"
 
