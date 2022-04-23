@@ -24,7 +24,7 @@ What constitutes clean code? We want simple and maintainable, but how do we defi
 
 Package level state is rarely required. If it is, it should be composed of re-usable constructs defined and exposed from the package itself.
 
-In avoiding package level state we avoid [hidden dependencies and unintended side effects](https://dave.cheney.net/practical-go/presentations/gophercon-israel.html#_avoid_package_level_state) stemming from global state mutation. Model loosely coupled components by [declaring your dependencies](#dependencies).
+In avoiding package level state we avoid [hidden dependencies and unintended side effects](https://dave.cheney.net/practical-go/presentations/gophercon-israel.html#_avoid_package_level_state) stemming from global state mutation. Model loosely-coupled components by [declaring your dependencies](#dependencies).
 
 ### Names
 
