@@ -52,7 +52,7 @@ Variable names should be concise and descriptive. Prefer single word names. The 
 - Constructs
 - Interfaces
 
-### <a nane="dependencies"></a> Depencencies
+### <a name="dependencies"></a> Dependencies
 
 - Accept interfaces, return structs
 - Declare your dependencies
