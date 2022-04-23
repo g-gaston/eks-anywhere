@@ -32,7 +32,7 @@ In avoiding package level state we avoid [hidden dependencies and unintended sid
 
 Package names help form the first impression of what a package provides and is used to reference the public API of the package. A good package name brings about clarity and purpose for consumers. Package names should be concise and represent the behavior the package provides not the types it contains. For example, `meals` provides `dr
 
-Avoid stutter in struct and interface names by treating the package name as a namespace and considering how the types are consumed. For example, `drink.DrinkDecorator` should be `drink.Dectorator`.
+Avoid stutter in struct and interface names by treating the package name as a namespace and considering how the types are consumed. For example, `drink.DrinkDecorator` should be `drink.Decorator`.
 
 If you find yourself using an appropriate package name that's commonly used as a variable, consider pluralising the package name.
 
