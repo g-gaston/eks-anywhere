@@ -16,7 +16,7 @@ These principles provide a guide for designing software. At times they may seem 
 
 ## "clean code that is optimized for change"
 
-What constitutes clean code? We want simple and maintable, but how do we define that? The following best practices offer niche advice. Combined, they represent our definition of clean code.
+What constitutes clean code? We want simple and maintainable, but how do we define that? The following best practices offer niche advice. Combined, they represent our definition of clean code.
 
 ### State
 
