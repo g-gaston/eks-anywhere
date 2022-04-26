@@ -164,6 +164,9 @@ In the present day we still see 80 chars line length feature in coding standards
 
 When developing code, we ask you to take these points into consideration and not to create obnoxiously long lines. Compliment exisiting code. Configure your IDE to plot margins so it may aid your decision.
 
+### File naming
+
+All `go` file names must follow `snake_case`.
 ## References
 
 - Dave Cheney - https://dave.cheney.net/practical-go/presentations/gophercon-israel.html
