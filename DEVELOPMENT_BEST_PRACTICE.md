@@ -134,6 +134,13 @@ Variable names should be concise and descriptive. Prefer single word names. The 
 - General advice is to not panic
 - Exceptions and rationale around invalidity of a program
 
+## "Leave code better than you found it"
+
+- Prefer small incremental cleanups vs big refactors.
+- We shouldn't wait until we have a big ball of mud before refactoring.
+- Consider the code in the context of your new additions, not in the original context. The code that made sense originally might not make sense anymore.
+- If the refactor is big enough, create a separate PR.
+- Balance this with feature delivery. But remember, this is not a feature factory, every PR should make the codebase better.
 ## Style
 
 ### Variable declaration
