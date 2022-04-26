@@ -66,6 +66,8 @@ Variable names should be concise and descriptive. Prefer single word names. The 
 - test using the `_test` idiom
 - Use test to help identify if the package is easy to use for consumers
 - isolating concerns like io
+- All code we spend time designing and writing is worth testing. Exceptions (up to the dev): test code, internal non production tooling (eg. test log tool)
+- Name your tests after what you are testing: `Test[entity-name][tested-method-name][scenario]`
 
 ### Interfaces
 
