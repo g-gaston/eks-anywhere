@@ -18,6 +18,13 @@ type Task interface {
 	Name() string
 }
 
+type TaskWithCheckpoint interface {
+	Task
+	// Restores the command context from a saved checkpoint
+	// if this task wa already completed and returns the next task
+	Restore(taskcheckpoint TaskCheckpoint, commandContext *CommandContext) (TaskWithCheckpoint, error)
+}
+
 // Command context maintains the mutable and shared entities
 type CommandContext struct {
 	Bootstrapper       interfaces.Bootstrapper
@@ -131,4 +138,52 @@ func NewTaskRunner(task Task) *taskRunner {
 	return &taskRunner{
 		task: task,
 	}
+}
+
+type TaskCheckpoint map[string]interface{}
+
+type checkpointInfo struct {
+	completedTasks map[string]TaskCheckpoint
+}
+
+type checkpointTaskRunner struct {
+	startTask  TaskWithCheckpoint
+	checkpoint checkpointInfo
+}
+
+func (c *checkpointTaskRunner) RunTask(ctx context.Context, commandContext *CommandContext) error {
+	t := newCheckpointWrapper(c.checkpoint, c.startTask)
+	r := NewTaskRunner(t)
+	return r.RunTask(ctx, commandContext)
+}
+
+func newCheckpointWrapper(checkpoint checkpointInfo, task TaskWithCheckpoint) checkpointWrapper {
+	return checkpointWrapper{
+		task:       task,
+		checkpoint: checkpoint,
+	}
+}
+
+type checkpointWrapper struct {
+	task       TaskWithCheckpoint
+	checkpoint checkpointInfo
+}
+
+func (c checkpointWrapper) Name() string {
+	return c.task.Name()
+}
+
+func (c checkpointWrapper) Run(ctx context.Context, commandContext *CommandContext) Task {
+	taskCheckpoint, ok := c.checkpoint.completedTasks[c.task.Name()]
+	if !ok {
+		return c.task.Run(ctx, commandContext)
+	}
+
+	nextTask, err := c.task.Restore(taskCheckpoint, commandContext)
+	if err != nil {
+		commandContext.SetError(err)
+		return nil
+	}
+
+	return newCheckpointWrapper(c.checkpoint, nextTask)
 }
