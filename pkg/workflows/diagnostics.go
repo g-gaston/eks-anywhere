@@ -8,13 +8,14 @@ import (
 )
 
 type CollectDiagnosticsTask struct {
+	task.BasicTask
 	*CollectWorkloadClusterDiagnosticsTask
 	*CollectMgmtClusterDiagnosticsTask
 }
 
-type CollectWorkloadClusterDiagnosticsTask struct{}
+type CollectWorkloadClusterDiagnosticsTask struct{ task.BasicTask }
 
-type CollectMgmtClusterDiagnosticsTask struct{}
+type CollectMgmtClusterDiagnosticsTask struct{ task.BasicTask }
 
 // CollectDiagnosticsTask implementation
 

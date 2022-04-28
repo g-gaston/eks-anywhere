@@ -2,7 +2,10 @@ package workflows
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"os"
+	"path/filepath"
 
 	"github.com/aws/eks-anywhere/pkg/cluster"
 	"github.com/aws/eks-anywhere/pkg/clustermarshaller"
@@ -70,7 +73,7 @@ func (c *Upgrade) Run(ctx context.Context, clusterSpec *cluster.Spec, management
 		UpgradeChangeDiff: c.upgradeChangeDiff,
 	}
 
-	return task.NewTaskRunner(&setupAndValidateTasks{}).RunTask(ctx, commandContext)
+	return task.NewTaskRunner(&setupAndValidateTasks{}, c.writer, task.WithCheckpointFile(filepath.Join(c.writer.Dir(), "generated"))).RunTask(ctx, commandContext)
 }
 
 type setupAndValidateTasks struct{}
@@ -79,13 +82,19 @@ type updateSecrets struct{}
 
 type ensureEtcdCAPIComponentsExistTask struct{}
 
-type upgradeCoreComponents struct{}
+type upgradeCoreComponents struct {
+	UpgradeChangeDiff *types.ChangeDiff
+}
 
-type upgradeNeeded struct{}
+type upgradeNeeded struct {
+	Needed bool
+}
 
 type pauseEksaAndFluxReconcile struct{}
 
-type createBootstrapClusterTask struct{}
+type createBootstrapClusterTask struct {
+	bootstrapCluster *types.Cluster
+}
 
 type installCAPITask struct{}
 
@@ -123,6 +132,14 @@ func (s *setupAndValidateTasks) Run(ctx context.Context, commandContext *task.Co
 	return &updateSecrets{}
 }
 
+func (s *setupAndValidateTasks) Checkpoint() task.TaskCheckpoint {
+	return nil
+}
+
+func (s *setupAndValidateTasks) Restore(ctx context.Context, unmarshalCheckpoint task.UnmarshallTaskCheckpoint, commandContext *task.CommandContext) (task.Task, error) {
+	return &updateSecrets{}, nil
+}
+
 func (s *setupAndValidateTasks) validations(ctx context.Context, commandContext *task.CommandContext) []validations.Validation {
 	return []validations.Validation{
 		func() *validations.ValidationResult {
@@ -153,6 +170,14 @@ func (s *updateSecrets) Run(ctx context.Context, commandContext *task.CommandCon
 	return &ensureEtcdCAPIComponentsExistTask{}
 }
 
+func (s *updateSecrets) Checkpoint() task.TaskCheckpoint {
+	return nil
+}
+
+func (s *updateSecrets) Restore(ctx context.Context, unmarshalCheckpoint task.UnmarshallTaskCheckpoint, commandContext *task.CommandContext) (task.Task, error) {
+	return &ensureEtcdCAPIComponentsExistTask{}, nil
+}
+
 func (s *updateSecrets) Name() string {
 	return "update-secrets"
 }
@@ -170,6 +195,19 @@ func (s *ensureEtcdCAPIComponentsExistTask) Run(ctx context.Context, commandCont
 		return nil
 	}
 	return &upgradeCoreComponents{}
+}
+
+func (s *ensureEtcdCAPIComponentsExistTask) Checkpoint() task.TaskCheckpoint {
+	return nil
+}
+
+func (s *ensureEtcdCAPIComponentsExistTask) Restore(ctx context.Context, unmarshalCheckpoint task.UnmarshallTaskCheckpoint, commandContext *task.CommandContext) (task.Task, error) {
+	currentSpec, err := commandContext.ClusterManager.GetCurrentClusterSpec(ctx, commandContext.ManagementCluster, commandContext.ClusterSpec.Cluster.Name)
+	if err != nil {
+		return nil, err
+	}
+	commandContext.CurrentClusterSpec = currentSpec
+	return &upgradeCoreComponents{}, nil
 }
 
 func (s *ensureEtcdCAPIComponentsExistTask) Name() string {
@@ -219,8 +257,23 @@ func (s *upgradeCoreComponents) Run(ctx context.Context, commandContext *task.Co
 		return &CollectDiagnosticsTask{}
 	}
 	commandContext.UpgradeChangeDiff.Append(changeDiff)
+	s.UpgradeChangeDiff = commandContext.UpgradeChangeDiff
 
 	return &upgradeNeeded{}
+}
+
+func (s *upgradeCoreComponents) Checkpoint() task.TaskCheckpoint {
+	return s.UpgradeChangeDiff
+}
+
+func (s *upgradeCoreComponents) Restore(ctx context.Context, unmarshalCheckpoint task.UnmarshallTaskCheckpoint, commandContext *task.CommandContext) (task.Task, error) {
+	s.UpgradeChangeDiff = &types.ChangeDiff{}
+	if err := unmarshalCheckpoint(s.UpgradeChangeDiff); err != nil {
+		return nil, err
+	}
+	commandContext.UpgradeChangeDiff = s.UpgradeChangeDiff
+
+	return &upgradeNeeded{}, nil
 }
 
 func (s *upgradeCoreComponents) Name() string {
@@ -248,7 +301,24 @@ func (s *upgradeNeeded) Run(ctx context.Context, commandContext *task.CommandCon
 		return nil
 	}
 
+	s.Needed = true
 	return &pauseEksaAndFluxReconcile{}
+}
+
+func (s *upgradeNeeded) Checkpoint() task.TaskCheckpoint {
+	return s
+}
+
+func (s *upgradeNeeded) Restore(ctx context.Context, unmarshalCheckpoint task.UnmarshallTaskCheckpoint, commandContext *task.CommandContext) (task.Task, error) {
+	if err := unmarshalCheckpoint(s); err != nil {
+		return nil, err
+	}
+	if s.Needed {
+		return &pauseEksaAndFluxReconcile{}, nil
+	}
+
+	logger.Info("No upgrades needed from cluster spec")
+	return nil, nil
 }
 
 func (s *upgradeNeeded) Name() string {
@@ -272,6 +342,14 @@ func (s *pauseEksaAndFluxReconcile) Run(ctx context.Context, commandContext *tas
 	return &createBootstrapClusterTask{}
 }
 
+func (s *pauseEksaAndFluxReconcile) Checkpoint() task.TaskCheckpoint {
+	return nil
+}
+
+func (s *pauseEksaAndFluxReconcile) Restore(ctx context.Context, unmarshalCheckpoint task.UnmarshallTaskCheckpoint, commandContext *task.CommandContext) (task.Task, error) {
+	return &createBootstrapClusterTask{}, nil
+}
+
 func (s *pauseEksaAndFluxReconcile) Name() string {
 	return "pause-controllers-reconcile"
 }
@@ -289,6 +367,7 @@ func (s *createBootstrapClusterTask) Run(ctx context.Context, commandContext *ta
 
 	bootstrapCluster, err := commandContext.Bootstrapper.CreateBootstrapCluster(ctx, commandContext.ClusterSpec, bootstrapOptions...)
 	commandContext.BootstrapCluster = bootstrapCluster
+	s.bootstrapCluster = bootstrapCluster
 	if err != nil {
 		commandContext.SetError(err)
 		return &deleteBootstrapClusterTask{}
@@ -297,18 +376,45 @@ func (s *createBootstrapClusterTask) Run(ctx context.Context, commandContext *ta
 	return &installCAPITask{}
 }
 
+func (s *createBootstrapClusterTask) Checkpoint() task.TaskCheckpoint {
+	return s.bootstrapCluster
+}
+
+func (s *createBootstrapClusterTask) Restore(ctx context.Context, unmarshalCheckpoint task.UnmarshallTaskCheckpoint, commandContext *task.CommandContext) (task.Task, error) {
+	s.bootstrapCluster = &types.Cluster{}
+	if err := unmarshalCheckpoint(s.bootstrapCluster); err != nil {
+		return nil, err
+	}
+	commandContext.BootstrapCluster = s.bootstrapCluster
+
+	if commandContext.ManagementCluster != nil && commandContext.ManagementCluster.ExistingManagement {
+		return &upgradeWorkloadClusterTask{}, nil
+	}
+
+	return &installCAPITask{}, nil
+}
+
 func (s *createBootstrapClusterTask) Name() string {
 	return "bootstrap-cluster-init"
 }
 
 func (s *installCAPITask) Run(ctx context.Context, commandContext *task.CommandContext) task.Task {
 	logger.Info("Installing cluster-api providers on bootstrap cluster")
+
 	err := commandContext.ClusterManager.InstallCAPI(ctx, commandContext.ClusterSpec, commandContext.BootstrapCluster, commandContext.Provider)
 	if err != nil {
 		commandContext.SetError(err)
 		return &deleteBootstrapClusterTask{}
 	}
 	return &moveManagementToBootstrapTask{}
+}
+
+func (s *installCAPITask) Checkpoint() task.TaskCheckpoint {
+	return nil
+}
+
+func (s *installCAPITask) Restore(ctx context.Context, unmarshalCheckpoint task.UnmarshallTaskCheckpoint, commandContext *task.CommandContext) (task.Task, error) {
+	return &moveManagementToBootstrapTask{}, nil
 }
 
 func (s *installCAPITask) Name() string {
@@ -324,6 +430,15 @@ func (s *moveManagementToBootstrapTask) Run(ctx context.Context, commandContext 
 	}
 	commandContext.ManagementCluster = commandContext.BootstrapCluster
 	return &upgradeWorkloadClusterTask{}
+}
+
+func (s *moveManagementToBootstrapTask) Checkpoint() task.TaskCheckpoint {
+	return nil
+}
+
+func (s *moveManagementToBootstrapTask) Restore(ctx context.Context, unmarshalCheckpoint task.UnmarshallTaskCheckpoint, commandContext *task.CommandContext) (task.Task, error) {
+	commandContext.ManagementCluster = commandContext.BootstrapCluster
+	return &upgradeWorkloadClusterTask{}, nil
 }
 
 func (s *moveManagementToBootstrapTask) Name() string {
@@ -346,6 +461,12 @@ func (s *upgradeWorkloadClusterTask) Run(ctx context.Context, commandContext *ta
 		return &moveManagementToWorkloadTaskAndExit{}
 	}
 
+	// fake error
+	if os.Getenv("FAKE_ERROR") == "true" {
+		commandContext.SetError(errors.New("fake error in upgrade"))
+		return nil
+	}
+
 	if commandContext.UpgradeChangeDiff.Changed() {
 		if err = commandContext.ClusterManager.ApplyBundles(ctx, commandContext.ClusterSpec, eksaManagementCluster); err != nil {
 			commandContext.SetError(err)
@@ -354,6 +475,14 @@ func (s *upgradeWorkloadClusterTask) Run(ctx context.Context, commandContext *ta
 	}
 
 	return &moveManagementToWorkloadTask{}
+}
+
+func (s *upgradeWorkloadClusterTask) Checkpoint() task.TaskCheckpoint {
+	return nil
+}
+
+func (s *upgradeWorkloadClusterTask) Restore(ctx context.Context, unmarshalCheckpoint task.UnmarshallTaskCheckpoint, commandContext *task.CommandContext) (task.Task, error) {
+	return &moveManagementToWorkloadTask{}, nil
 }
 
 func (s *upgradeWorkloadClusterTask) Name() string {
@@ -372,6 +501,14 @@ func (s *moveManagementToWorkloadTask) Run(ctx context.Context, commandContext *
 	}
 	commandContext.ManagementCluster = commandContext.WorkloadCluster
 	return &updateClusterAndGitResources{}
+}
+
+func (s *moveManagementToWorkloadTask) Checkpoint() task.TaskCheckpoint {
+	return nil
+}
+
+func (s *moveManagementToWorkloadTask) Restore(ctx context.Context, unmarshalCheckpoint task.UnmarshallTaskCheckpoint, commandContext *task.CommandContext) (task.Task, error) {
+	return &moveManagementToWorkloadTask{}, nil
 }
 
 func (s *moveManagementToWorkloadTaskAndExit) Run(ctx context.Context, commandContext *task.CommandContext) task.Task {
@@ -414,6 +551,14 @@ func (s *updateClusterAndGitResources) Run(ctx context.Context, commandContext *
 	return &resumeFluxReconcile{}
 }
 
+func (s *updateClusterAndGitResources) Checkpoint() task.TaskCheckpoint {
+	return nil
+}
+
+func (s *updateClusterAndGitResources) Restore(ctx context.Context, unmarshalCheckpoint task.UnmarshallTaskCheckpoint, commandContext *task.CommandContext) (task.Task, error) {
+	return &resumeFluxReconcile{}, nil
+}
+
 func (s *updateClusterAndGitResources) Name() string {
 	return "update-resources"
 }
@@ -435,6 +580,14 @@ func (s *resumeFluxReconcile) Run(ctx context.Context, commandContext *task.Comm
 	return &writeClusterConfigTask{}
 }
 
+func (s *resumeFluxReconcile) Checkpoint() task.TaskCheckpoint {
+	return nil
+}
+
+func (s *resumeFluxReconcile) Restore(ctx context.Context, unmarshalCheckpoint task.UnmarshallTaskCheckpoint, commandContext *task.CommandContext) (task.Task, error) {
+	return &writeClusterConfigTask{}, nil
+}
+
 func (s *resumeFluxReconcile) Name() string {
 	return "resume-flux-kustomization"
 }
@@ -446,6 +599,14 @@ func (s *writeClusterConfigTask) Run(ctx context.Context, commandContext *task.C
 		commandContext.SetError(err)
 	}
 	return &deleteBootstrapClusterTask{}
+}
+
+func (s *writeClusterConfigTask) Checkpoint() task.TaskCheckpoint {
+	return nil
+}
+
+func (s *writeClusterConfigTask) Restore(ctx context.Context, unmarshalCheckpoint task.UnmarshallTaskCheckpoint, commandContext *task.CommandContext) (task.Task, error) {
+	return &moveManagementToWorkloadTask{}, nil
 }
 
 func (s *writeClusterConfigTask) Name() string {
@@ -471,6 +632,14 @@ func (s *deleteBootstrapClusterTask) Run(ctx context.Context, commandContext *ta
 		logger.MarkSuccess("Cluster upgraded!")
 	}
 	return nil
+}
+
+func (s *deleteBootstrapClusterTask) Checkpoint() task.TaskCheckpoint {
+	return nil
+}
+
+func (s *deleteBootstrapClusterTask) Restore(ctx context.Context, unmarshalCheckpoint task.UnmarshallTaskCheckpoint, commandContext *task.CommandContext) (task.Task, error) {
+	return &moveManagementToWorkloadTask{}, nil
 }
 
 func (s *deleteBootstrapClusterTask) Name() string {

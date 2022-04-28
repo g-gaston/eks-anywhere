@@ -2,7 +2,12 @@ package task
 
 import (
 	"context"
+	"log"
+	"os"
+	"path/filepath"
 	"time"
+
+	"sigs.k8s.io/yaml"
 
 	"github.com/aws/eks-anywhere/pkg/cluster"
 	"github.com/aws/eks-anywhere/pkg/filewriter"
@@ -12,17 +17,26 @@ import (
 	"github.com/aws/eks-anywhere/pkg/workflows/interfaces"
 )
 
+const checkpointFileName = "checkpoint.yaml"
+
 // Task is a logical unit of work - meant to be implemented by each Task
 type Task interface {
 	Run(ctx context.Context, commandContext *CommandContext) Task
 	Name() string
+	Checkpoint() TaskCheckpoint
+	// Restores the command context from a saved checkpoint
+	// if this task was already completed and returns the next task
+	Restore(ctx context.Context, unmarshalCheckpoint UnmarshallTaskCheckpoint, commandContext *CommandContext) (Task, error)
 }
 
-type TaskWithCheckpoint interface {
-	Task
-	// Restores the command context from a saved checkpoint
-	// if this task wa already completed and returns the next task
-	Restore(taskcheckpoint TaskCheckpoint, commandContext *CommandContext) (TaskWithCheckpoint, error)
+type BasicTask struct{}
+
+func (BasicTask) Checkpoint() TaskCheckpoint {
+	return nil
+}
+
+func (BasicTask) Restore(ctx context.Context, unmarshalCheckpoint UnmarshallTaskCheckpoint, commandContext *CommandContext) (Task, error) {
+	return nil, nil
 }
 
 // Command context maintains the mutable and shared entities
@@ -107,8 +121,12 @@ func (pp *Profiler) logProfileSummary(taskName string) {
 
 // Manages Task execution
 type taskRunner struct {
-	task Task
+	writer           filewriter.FileWriter
+	firstTask        Task
+	singleTaskRunner singleTaskRunner
 }
+
+type singleTaskRunner func(ctx context.Context, commandContext *CommandContext, task Task) Task
 
 // executes Task
 func (pr *taskRunner) RunTask(ctx context.Context, commandContext *CommandContext) error {
@@ -116,74 +134,135 @@ func (pr *taskRunner) RunTask(ctx context.Context, commandContext *CommandContex
 		metrics: make(map[string]map[string]time.Duration),
 		starts:  make(map[string]map[string]time.Time),
 	}
-	task := pr.task
+	task := pr.firstTask
 	start := time.Now()
 	defer taskRunnerFinalBlock(start)
+	checkpointInfo := newCheckpointInfo()
 	for task != nil {
 		logger.V(4).Info("Task start", "task_name", task.Name())
 		commandContext.Profiler.SetStartTask(task.Name())
-		nextTask := task.Run(ctx, commandContext)
+		nextTask := pr.singleTaskRunner(ctx, commandContext, task)
 		commandContext.Profiler.MarkDoneTask(task.Name())
 		commandContext.Profiler.logProfileSummary(task.Name())
+		if commandContext.OriginalError == nil {
+			checkpointInfo.taskCompleted(task.Name(), task.Checkpoint())
+		}
 		task = nextTask
 	}
+
+	if commandContext.OriginalError != nil {
+		pr.saveCheckpoint(checkpointInfo)
+	}
+
 	return commandContext.OriginalError
+}
+
+func (pr *taskRunner) saveCheckpoint(checkpointInfo checkpointInfo) {
+	log.Printf("Saving checkpoint:\n%v\n", checkpointInfo)
+	content, err := yaml.Marshal(checkpointInfo)
+	if err != nil {
+		log.Printf("failed saving task runner checkpoint: %v\n", err)
+	}
+
+	if _, err = pr.writer.Write(checkpointFileName, content); err != nil {
+		log.Printf("failed saving task runner checkpoint: %v\n", err)
+	}
+}
+
+func runSimpleTask(ctx context.Context, commandContext *CommandContext, task Task) Task {
+	return task.Run(ctx, commandContext)
 }
 
 func taskRunnerFinalBlock(startTime time.Time) {
 	logger.V(4).Info("Tasks completed", "duration", time.Since(startTime))
 }
 
-func NewTaskRunner(task Task) *taskRunner {
-	return &taskRunner{
-		task: task,
+type TaskRunnerOpt func(*taskRunner)
+
+func WithCheckpointFile(fileDir string) TaskRunnerOpt {
+	file := filepath.Join(fileDir, checkpointFileName)
+	return func(t *taskRunner) {
+		logger.Info("Reading checkpoint", "file", file)
+		content, err := os.ReadFile(file)
+		if err != nil {
+			log.Printf("failed reading checkpoint file: %v\n", err)
+		}
+		checkpointInfo := &checkpointInfo{}
+		err = yaml.Unmarshal(content, checkpointInfo)
+		if err != nil {
+			log.Printf("failed unmarshalling checkpoint: %v\n", err)
+		}
+
+		t.singleTaskRunner = newCheckpointTaskRunner(*checkpointInfo).run
 	}
 }
 
-type TaskCheckpoint map[string]interface{}
+func NewTaskRunner(task Task, writer filewriter.FileWriter, opts ...TaskRunnerOpt) *taskRunner {
+	t := &taskRunner{
+		firstTask:        task,
+		singleTaskRunner: runSimpleTask,
+		writer:           writer,
+	}
+
+	for _, o := range opts {
+		o(t)
+	}
+
+	return t
+}
+
+type TaskCheckpoint interface{}
+
+type UnmarshallTaskCheckpoint func(config interface{}) error
 
 type checkpointInfo struct {
-	completedTasks map[string]TaskCheckpoint
+	CompletedTasks map[string]TaskCheckpoint `json:"completedTasks"`
 }
 
-type checkpointTaskRunner struct {
-	startTask  TaskWithCheckpoint
-	checkpoint checkpointInfo
+func newCheckpointInfo() checkpointInfo {
+	return checkpointInfo{
+		CompletedTasks: map[string]TaskCheckpoint{},
+	}
 }
 
-func (c *checkpointTaskRunner) RunTask(ctx context.Context, commandContext *CommandContext) error {
-	t := newCheckpointWrapper(c.checkpoint, c.startTask)
-	r := NewTaskRunner(t)
-	return r.RunTask(ctx, commandContext)
+func (c checkpointInfo) taskCompleted(name string, checkpoint TaskCheckpoint) {
+	c.CompletedTasks[name] = checkpoint
 }
 
-func newCheckpointWrapper(checkpoint checkpointInfo, task TaskWithCheckpoint) checkpointWrapper {
-	return checkpointWrapper{
-		task:       task,
+func newCheckpointTaskRunner(checkpoint checkpointInfo) checkpointTaskRunner {
+	return checkpointTaskRunner{
 		checkpoint: checkpoint,
 	}
 }
 
-type checkpointWrapper struct {
-	task       TaskWithCheckpoint
+type checkpointTaskRunner struct {
 	checkpoint checkpointInfo
 }
 
-func (c checkpointWrapper) Name() string {
-	return c.task.Name()
-}
-
-func (c checkpointWrapper) Run(ctx context.Context, commandContext *CommandContext) Task {
-	taskCheckpoint, ok := c.checkpoint.completedTasks[c.task.Name()]
+func (c checkpointTaskRunner) run(ctx context.Context, commandContext *CommandContext, task Task) Task {
+	taskCheckpoint, ok := c.checkpoint.CompletedTasks[task.Name()]
 	if !ok {
-		return c.task.Run(ctx, commandContext)
+		return task.Run(ctx, commandContext)
 	}
 
-	nextTask, err := c.task.Restore(taskCheckpoint, commandContext)
+	nextTask, err := task.Restore(ctx, newUnmarshallTaskCheckpoint(taskCheckpoint), commandContext)
 	if err != nil {
 		commandContext.SetError(err)
 		return nil
 	}
+	logger.V(4).Info("Task restored from checkpoint", "task_name", task.Name())
 
-	return newCheckpointWrapper(c.checkpoint, nextTask)
+	return nextTask
+}
+
+func newUnmarshallTaskCheckpoint(taskCheckpoint TaskCheckpoint) UnmarshallTaskCheckpoint {
+	return func(config interface{}) error {
+		// TODO: inefficient
+		checkpointYaml, err := yaml.Marshal(taskCheckpoint)
+		if err != nil {
+			return nil
+		}
+
+		return yaml.Unmarshal(checkpointYaml, config)
+	}
 }

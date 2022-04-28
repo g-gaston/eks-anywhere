@@ -47,6 +47,6 @@ func buildGovc(t *testing.T) *executables.Govc {
 	return govc
 }
 
-func buildDocker(t *testing.T) *executables.Docker {
+func buildDocker(t testing.TB) *executables.Docker {
 	return executables.BuildDockerExecutable()
 }

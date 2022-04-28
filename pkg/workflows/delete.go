@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/aws/eks-anywhere/pkg/cluster"
+	"github.com/aws/eks-anywhere/pkg/filewriter"
 	"github.com/aws/eks-anywhere/pkg/logger"
 	"github.com/aws/eks-anywhere/pkg/providers"
 	"github.com/aws/eks-anywhere/pkg/task"
@@ -16,6 +17,7 @@ type Delete struct {
 	provider       providers.Provider
 	clusterManager interfaces.ClusterManager
 	addonManager   interfaces.AddonManager
+	writer         filewriter.FileWriter
 }
 
 func NewDelete(bootstrapper interfaces.Bootstrapper, provider providers.Provider,
@@ -51,22 +53,22 @@ func (c *Delete) Run(ctx context.Context, workloadCluster *types.Cluster, cluste
 		commandContext.BootstrapCluster = clusterSpec.ManagementCluster
 	}
 
-	return task.NewTaskRunner(&setupAndValidate{}).RunTask(ctx, commandContext)
+	return task.NewTaskRunner(&setupAndValidate{}, c.writer).RunTask(ctx, commandContext)
 }
 
-type setupAndValidate struct{}
+type setupAndValidate struct{ task.BasicTask }
 
-type createManagementCluster struct{}
+type createManagementCluster struct{ task.BasicTask }
 
-type installCAPI struct{}
+type installCAPI struct{ task.BasicTask }
 
-type moveClusterManagement struct{}
+type moveClusterManagement struct{ task.BasicTask }
 
-type deleteWorkloadCluster struct{}
+type deleteWorkloadCluster struct{ task.BasicTask }
 
-type cleanupGitRepo struct{}
+type cleanupGitRepo struct{ task.BasicTask }
 
-type deleteManagementCluster struct{}
+type deleteManagementCluster struct{ task.BasicTask }
 
 func (s *setupAndValidate) Run(ctx context.Context, commandContext *task.CommandContext) task.Task {
 	logger.Info("Performing provider setup and validations")

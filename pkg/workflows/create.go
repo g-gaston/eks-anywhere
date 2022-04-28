@@ -60,26 +60,27 @@ func (c *Create) Run(ctx context.Context, clusterSpec *cluster.Spec, validator i
 		commandContext.BootstrapCluster = clusterSpec.ManagementCluster
 	}
 
-	return task.NewTaskRunner(&SetAndValidateTask{}).RunTask(ctx, commandContext)
+	return task.NewTaskRunner(&SetAndValidateTask{}, c.writer).RunTask(ctx, commandContext)
 }
 
 // task related entities
 
-type CreateBootStrapClusterTask struct{}
+type CreateBootStrapClusterTask struct{ task.BasicTask }
 
-type SetAndValidateTask struct{}
+type SetAndValidateTask struct{ task.BasicTask }
 
-type CreateWorkloadClusterTask struct{}
+type CreateWorkloadClusterTask struct{ task.BasicTask }
 
-type InstallEksaComponentsTask struct{}
+type InstallEksaComponentsTask struct{ task.BasicTask }
 
-type InstallAddonManagerTask struct{}
+type InstallAddonManagerTask struct{ task.BasicTask }
 
-type MoveClusterManagementTask struct{}
+type MoveClusterManagementTask struct{ task.BasicTask }
 
-type WriteClusterConfigTask struct{}
+type WriteClusterConfigTask struct{ task.BasicTask }
 
 type DeleteBootstrapClusterTask struct {
+	task.BasicTask 
 	*CollectDiagnosticsTask
 }
 

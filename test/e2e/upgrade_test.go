@@ -4,6 +4,7 @@
 package e2e
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/aws/eks-anywhere/internal/pkg/api"
@@ -302,6 +303,58 @@ func TestDockerKubernetes121To122StackedEtcdUpgrade(t *testing.T) {
 		v1alpha1.Kube122,
 		framework.WithClusterUpgrade(api.WithKubernetesVersion(v1alpha1.Kube122)),
 	)
+}
+
+type notFailT struct {
+	*testing.T
+	failed bool
+}
+
+func (n *notFailT) Fatalf(format string, args ...interface{}) {
+	n.Logf("Expected failure: %s", fmt.Sprintf(format, args...))
+	n.failed = true
+}
+
+func TestDockerKubernetesTo122UpgradeWithFixableFailure(t *testing.T) {
+	provider := framework.NewDocker(t)
+	test := framework.NewClusterE2ETest(
+		t,
+		provider,
+		framework.WithClusterFiller(
+			api.WithStackedEtcdTopology(),
+			api.WithWorkerNodeCount(1),
+			api.WithControlPlaneCount(1),
+			api.WithKubernetesVersion(v1alpha1.Kube121),
+		),
+	)
+
+	test.GenerateClusterConfig()
+	test.CreateCluster()
+
+	// hack: make sure the test doesn't fail by swaping T
+	tForFailure := &notFailT{T: t}
+	test.T = tForFailure
+
+	test.UpgradeCluster(
+		[]framework.ClusterE2ETestOpt{
+			framework.WithClusterUpgrade(api.WithKubernetesVersion(v1alpha1.Kube122)),
+			framework.WithEnvVar("FAKE_ERROR", "true"),
+		},
+	)
+	if !tForFailure.failed {
+		t.Fatal("First upgrade should have failed")
+	}
+	test.T = t
+
+	test.UpgradeCluster(
+		[]framework.ClusterE2ETestOpt{
+			framework.WithClusterUpgrade(api.WithKubernetesVersion(v1alpha1.Kube122)),
+			framework.WithEnvVar("FAKE_ERROR", "false"),
+		},
+	)
+	test.ValidateCluster(v1alpha1.Kube122)
+	test.StopIfFailed()
+	test.DeleteCluster()
 }
 
 func TestVSphereKubernetes121UbuntuTo122StackedEtcdUpgrade(t *testing.T) {

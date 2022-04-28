@@ -47,7 +47,7 @@ const (
 var oidcRoles []byte
 
 type ClusterE2ETest struct {
-	T                      *testing.T
+	T                      testing.TB
 	ClusterConfigLocation  string
 	ClusterConfigFolder    string
 	HardwareConfigLocation string
