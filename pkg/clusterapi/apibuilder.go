@@ -11,6 +11,7 @@ import (
 	controlplanev1 "sigs.k8s.io/cluster-api/controlplane/kubeadm/api/v1beta1"
 
 	"github.com/aws/eks-anywhere/pkg/api/v1alpha1"
+	anywherev1 "github.com/aws/eks-anywhere/pkg/api/v1alpha1"
 	"github.com/aws/eks-anywhere/pkg/cluster"
 	"github.com/aws/eks-anywhere/pkg/constants"
 )
@@ -39,12 +40,15 @@ func InfrastructureAPIVersion() string {
 	return fmt.Sprintf("infrastructure.%s/%s", clusterv1.GroupVersion.Group, clusterv1.GroupVersion.Version)
 }
 
-func clusterLabels(clusterName string) map[string]string {
-	return map[string]string{clusterv1.ClusterLabelName: clusterName}
+func clusterLabels(clusterSpec *cluster.Spec) map[string]string {
+	return map[string]string{
+		clusterv1.ClusterLabelName: ClusterName(clusterSpec.Cluster),
+		constants.ClusterLabelName: clusterSpec.Cluster.Name,
+	}
 }
 
 func Cluster(clusterSpec *cluster.Spec, infrastructureObject, controlPlaneObject APIObject) *clusterv1.Cluster {
-	clusterName := clusterSpec.Cluster.GetName()
+	clusterName := ClusterName(clusterSpec.Cluster)
 	cluster := &clusterv1.Cluster{
 		TypeMeta: metav1.TypeMeta{
 			APIVersion: clusterAPIVersion,
@@ -53,7 +57,7 @@ func Cluster(clusterSpec *cluster.Spec, infrastructureObject, controlPlaneObject
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      clusterName,
 			Namespace: constants.EksaSystemNamespace,
-			Labels:    clusterLabels(clusterName),
+			Labels:    clusterLabels(clusterSpec),
 		},
 		Spec: clusterv1.ClusterSpec{
 			ClusterNetwork: &clusterv1.ClusterNetwork{
@@ -86,6 +90,10 @@ func Cluster(clusterSpec *cluster.Spec, infrastructureObject, controlPlaneObject
 	}
 
 	return cluster
+}
+
+func ClusterName(cluster *anywherev1.Cluster) string {
+	return cluster.Name
 }
 
 func KubeadmControlPlane(clusterSpec *cluster.Spec, infrastructureObject APIObject) (*controlplanev1.KubeadmControlPlane, error) {
@@ -219,7 +227,7 @@ func MachineDeployment(clusterSpec *cluster.Spec, workerNodeGroupConfig v1alpha1
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      MachineDeploymentName(clusterSpec, workerNodeGroupConfig),
 			Namespace: constants.EksaSystemNamespace,
-			Labels:    clusterLabels(clusterName),
+			Labels:    clusterLabels(clusterSpec),
 		},
 		Spec: clusterv1.MachineDeploymentSpec{
 			ClusterName: clusterName,
@@ -228,7 +236,7 @@ func MachineDeployment(clusterSpec *cluster.Spec, workerNodeGroupConfig v1alpha1
 			},
 			Template: clusterv1.MachineTemplateSpec{
 				ObjectMeta: clusterv1.ObjectMeta{
-					Labels: clusterLabels(clusterName),
+					Labels: clusterLabels(clusterSpec),
 				},
 				Spec: clusterv1.MachineSpec{
 					Bootstrap: clusterv1.Bootstrap{

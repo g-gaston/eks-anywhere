@@ -45,7 +45,6 @@ type VSphereReconciler struct {
 	Log       logr.Logger
 	Validator *vsphere.Validator
 	Defaulter *vsphere.Defaulter
-	tracker   *remote.ClusterCacheTracker
 }
 
 type VSphereClusterReconciler struct {
@@ -60,10 +59,10 @@ func NewVSphereReconciler(client client.Client, log logr.Logger, validator *vsph
 			Log:       log,
 			Validator: validator,
 			Defaulter: defaulter,
-			tracker:   tracker,
 		},
 		providerClusterReconciler: &providerClusterReconciler{
-			providerClient: client,
+			client:  client,
+			tracker: tracker,
 		},
 	}
 }

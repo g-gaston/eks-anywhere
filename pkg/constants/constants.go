@@ -39,4 +39,6 @@ const (
 
 	DefaultRegistry            = "public.ecr.aws"
 	CloudstackAnnotationSuffix = "cloudstack.anywhere.eks.amazonaws.com/v1alpha1"
+
+	ClusterLabelName = "cluster.anywhere.eks.amazonaws.com/cluster-name"
 )

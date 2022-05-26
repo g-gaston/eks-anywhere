@@ -7,6 +7,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
 	"sigs.k8s.io/cluster-api/bootstrap/kubeadm/api/v1beta1"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/aws/eks-anywhere/pkg/clients/kubernetes"
 	"github.com/aws/eks-anywhere/pkg/cluster"
@@ -14,7 +15,7 @@ import (
 	snowv1 "github.com/aws/eks-anywhere/pkg/providers/snow/api/v1beta1"
 )
 
-func ControlPlaneObjects(ctx context.Context, clusterSpec *cluster.Spec, kubeClient kubernetes.Client) ([]runtime.Object, error) {
+func ControlPlaneObjects(ctx context.Context, clusterSpec *cluster.Spec, kubeClient kubernetes.Client) (*clusterapi.ControlPlane, error) {
 	snowCluster := SnowCluster(clusterSpec)
 	new := SnowMachineTemplate(clusterSpec.SnowMachineConfigs[clusterSpec.Cluster.Spec.ControlPlaneConfiguration.MachineGroupRef.Name])
 
@@ -32,10 +33,15 @@ func ControlPlaneObjects(ctx context.Context, clusterSpec *cluster.Spec, kubeCli
 	}
 	capiCluster := CAPICluster(clusterSpec, snowCluster, kubeadmControlPlane)
 
-	return []runtime.Object{capiCluster, snowCluster, kubeadmControlPlane, new}, nil
+	return &clusterapi.ControlPlane{
+		Cluster:                 capiCluster,
+		ProviderCluster:         snowCluster,
+		KubeadmControlPlane:     kubeadmControlPlane,
+		ProviderMachineTemplate: new,
+	}, nil
 }
 
-func WorkersObjects(ctx context.Context, clusterSpec *cluster.Spec, kubeClient kubernetes.Client) ([]runtime.Object, error) {
+func WorkersObjects(ctx context.Context, clusterSpec *cluster.Spec, kubeClient kubernetes.Client) ([]client.Object, error) {
 	kubeadmConfigTemplates, err := KubeadmConfigTemplates(clusterSpec)
 	if err != nil {
 		return nil, err

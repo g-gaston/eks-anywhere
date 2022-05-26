@@ -108,7 +108,7 @@ func CAPIObjects(ctx context.Context, clusterSpec *cluster.Spec, kubeClient kube
 		return nil, nil, err
 	}
 
-	controlPlaneSpec, err = templater.ObjectsToYaml(controlPlaneObjs...)
+	controlPlaneSpec, err = templater.ObjectsToYaml(controlPlaneObjs.RuntimeObjects()...)
 	if err != nil {
 		return nil, nil, err
 	}
