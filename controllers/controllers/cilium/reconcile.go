@@ -26,7 +26,7 @@ type YamlGenerator interface {
 	GenerateManifest(ctx context.Context, clusterSpec *cluster.Spec, providerNamespaces []string) ([]byte, error)
 }
 
-func NewCiliumReconciler(generator YamlGenerator) Reconciler {
+func NewReconciler(generator YamlGenerator) Reconciler {
 	return Reconciler{
 		generator: generator,
 	}

@@ -57,6 +57,8 @@ type Dependencies struct {
 	Helm                      *executables.Helm
 	UnAuthKubeClient          *kubernetes.UnAuthClient
 	Networking                clustermanager.Networking
+	Cilium                    *cilium.Cilium
+	kindnetd                  *kindnetd.Kindnetd
 	AwsIamAuth                clustermanager.AwsIamAuth
 	ClusterManager            *clustermanager.ClusterManager
 	Bootstrapper              *bootstrapper.Bootstrapper
@@ -568,14 +570,14 @@ func (f *Factory) WithHelm() *Factory {
 func (f *Factory) WithNetworking(clusterConfig *v1alpha1.Cluster) *Factory {
 	var networkingBuilder func() clustermanager.Networking
 	if clusterConfig.Spec.ClusterNetwork.CNIConfig.Kindnetd != nil {
-		f.WithKubectl()
+		f.WithKindnetd()
 		networkingBuilder = func() clustermanager.Networking {
-			return kindnetd.NewKindnetd(f.dependencies.Kubectl)
+			return f.dependencies.kindnetd
 		}
 	} else {
-		f.WithKubectl().WithHelm()
+		f.WithCilium()
 		networkingBuilder = func() clustermanager.Networking {
-			return cilium.NewCilium(f.dependencies.Kubectl, f.dependencies.Helm)
+			return f.dependencies.Cilium
 		}
 	}
 
@@ -584,6 +586,36 @@ func (f *Factory) WithNetworking(clusterConfig *v1alpha1.Cluster) *Factory {
 			return nil
 		}
 		f.dependencies.Networking = networkingBuilder()
+
+		return nil
+	})
+
+	return f
+}
+
+func (f *Factory) WithCilium() *Factory {
+	f.WithKubectl().WithHelm()
+
+	f.buildSteps = append(f.buildSteps, func(ctx context.Context) error {
+		if f.dependencies.Cilium != nil {
+			return nil
+		}
+		f.dependencies.Cilium = cilium.NewCilium(f.dependencies.Kubectl, f.dependencies.Helm)
+
+		return nil
+	})
+
+	return f
+}
+
+func (f *Factory) WithKindnetd() *Factory {
+	f.WithKubectl()
+
+	f.buildSteps = append(f.buildSteps, func(ctx context.Context) error {
+		if f.dependencies.kindnetd != nil {
+			return nil
+		}
+		f.dependencies.kindnetd = kindnetd.NewKindnetd(f.dependencies.Kubectl)
 
 		return nil
 	})
