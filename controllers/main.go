@@ -23,6 +23,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
+	snowv1 "github.com/aws/eks-anywhere/pkg/providers/snow/api/v1beta1"
+
 	"github.com/aws/eks-anywhere/controllers/controllers"
 	"github.com/aws/eks-anywhere/controllers/factory"
 	anywherev1 "github.com/aws/eks-anywhere/pkg/api/v1alpha1"
@@ -51,6 +53,7 @@ func init() {
 	utilruntime.Must(vspherev1.AddToScheme(scheme))
 	utilruntime.Must(cloudstackv1.AddToScheme(scheme))
 	utilruntime.Must(dockerv1.AddToScheme(scheme))
+	utilruntime.Must(snowv1.AddToScheme(scheme))
 	utilruntime.Must(etcdv1.AddToScheme(scheme))
 	utilruntime.Must(kubeadmv1.AddToScheme(scheme))
 	utilruntime.Must(eksdv1alpha1.AddToScheme(scheme))
