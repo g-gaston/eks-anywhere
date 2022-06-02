@@ -4,7 +4,6 @@ import (
 	"context"
 
 	"k8s.io/apimachinery/pkg/api/equality"
-	"k8s.io/apimachinery/pkg/runtime"
 	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
 	"sigs.k8s.io/cluster-api/bootstrap/kubeadm/api/v1beta1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -60,8 +59,8 @@ func WorkersObjects(ctx context.Context, clusterSpec *cluster.Spec, kubeClient k
 func concatWorkersObjects(machineDeployments map[string]*clusterv1.MachineDeployment,
 	kubeadmConfigTemplates map[string]*v1beta1.KubeadmConfigTemplate,
 	workerMachineTemplates map[string]*snowv1.AWSSnowMachineTemplate,
-) []runtime.Object {
-	workersObjs := make([]runtime.Object, 0, len(machineDeployments)+len(kubeadmConfigTemplates)+len(workerMachineTemplates))
+) []client.Object {
+	workersObjs := make([]client.Object, 0, len(machineDeployments)+len(kubeadmConfigTemplates)+len(workerMachineTemplates))
 	for _, item := range machineDeployments {
 		workersObjs = append(workersObjs, item)
 	}

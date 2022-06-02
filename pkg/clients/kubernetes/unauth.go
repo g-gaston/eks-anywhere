@@ -10,7 +10,7 @@ import (
 )
 
 type KubectlGetter interface {
-	GetObject(ctx context.Context, resourceType, name, namespace, kubeconfig string, obj Object) error
+	GetObject(ctx context.Context, resourceType, name, namespace, kubeconfig string, obj runtime.Object) error
 	Delete(ctx context.Context, resourceType, name, namespace, kubeconfig string) error
 }
 
@@ -52,7 +52,7 @@ func (c *UnAuthClient) KubeconfigClient(kubeconfig string) Client {
 }
 
 // Delete performs a DELETE call to the kube API server authenticating with a kubeconfig file
-func (c *UnAuthClient) Delete(ctx context.Context, name, namespace, kubeconfig string, obj Object) error {
+func (c *UnAuthClient) Delete(ctx context.Context, name, namespace, kubeconfig string, obj runtime.Object) error {
 	resourceType, err := c.resourceTypeForObj(obj)
 	if err != nil {
 		return fmt.Errorf("deleting kubernetes resource: %v", err)
@@ -61,7 +61,7 @@ func (c *UnAuthClient) Delete(ctx context.Context, name, namespace, kubeconfig s
 	return c.kubectl.Delete(ctx, resourceType, name, namespace, kubeconfig)
 }
 
-func (c *UnAuthClient) resourceTypeForObj(obj Object) (string, error) {
+func (c *UnAuthClient) resourceTypeForObj(obj runtime.Object) (string, error) {
 	groupVersionKind, err := apiutil.GVKForObject(obj, c.scheme)
 	if err != nil {
 		return "", err

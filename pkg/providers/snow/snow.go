@@ -7,6 +7,7 @@ import (
 
 	"k8s.io/apimachinery/pkg/api/equality"
 	"k8s.io/apimachinery/pkg/runtime"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/aws/eks-anywhere/pkg/api/v1alpha1"
 	"github.com/aws/eks-anywhere/pkg/bootstrapper"
@@ -118,12 +119,21 @@ func CAPIObjects(ctx context.Context, clusterSpec *cluster.Spec, kubeClient kube
 		return nil, nil, err
 	}
 
-	workersSpec, err = templater.ObjectsToYaml(workersObjs...)
+	workersSpec, err = templater.ObjectsToYaml(clientToRuntimeObjects(workersObjs)...)
 	if err != nil {
 		return nil, nil, err
 	}
 
 	return controlPlaneSpec, workersSpec, nil
+}
+
+func clientToRuntimeObjects(objs []client.Object) []runtime.Object {
+	runtimeObjs := make([]runtime.Object, 0, len(objs))
+	for _, o := range objs {
+		runtimeObjs = append(runtimeObjs, o)
+	}
+
+	return runtimeObjs
 }
 
 func (p *SnowProvider) generateCAPISpec(ctx context.Context, cluster *types.Cluster, clusterSpec *cluster.Spec) (controlPlaneSpec, workersSpec []byte, err error) {
