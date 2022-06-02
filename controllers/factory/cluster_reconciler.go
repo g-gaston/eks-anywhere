@@ -30,13 +30,19 @@ func NewFactory() *dependencies.Factory {
 }
 
 func BuildClusterReconcilerRegistry(ctx context.Context, log logr.Logger, client client.Client, manager manager.Manager, dependencyFactory *dependencies.Factory) (registry.ClusterReconcilerRegistry, error) {
+	factory := newClusterReconcilerRegistryFactory(log, client, manager, dependencyFactory)
+	factory.withSnowReconciler()
+	return factory.build(ctx)
+
+	// TODO: figure out how to use the API before the client cached in initialized (which only happens after the manager is started)
+	// We want to build the reconcilers before the manager is started so we can inject it in the cluster reconciler constructor
+	// And this happens before we call manager.Start()
+
 	providers := &clusterctlv1.ProviderList{}
 	err := client.List(ctx, providers)
 	if err != nil {
 		return registry.ClusterReconcilerRegistry{}, err
 	}
-
-	factory := newClusterReconcilerRegistryFactory(log, client, manager, dependencyFactory)
 
 	for _, p := range providers.Items {
 		if p.Type != string(clusterctlv1.InfrastructureProviderType) {
