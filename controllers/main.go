@@ -16,7 +16,6 @@ import (
 	vspherev1 "sigs.k8s.io/cluster-api-provider-vsphere/api/v1beta1"
 	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
 	kubeadmv1 "sigs.k8s.io/cluster-api/bootstrap/kubeadm/api/v1beta1"
-	"sigs.k8s.io/cluster-api/controllers/remote"
 	controlplanev1 "sigs.k8s.io/cluster-api/controlplane/kubeadm/api/v1beta1"
 	dockerv1 "sigs.k8s.io/cluster-api/test/infrastructure/docker/api/v1beta1"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -24,8 +23,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
 	"github.com/aws/eks-anywhere/controllers/controllers"
+	"github.com/aws/eks-anywhere/controllers/factory"
 	anywherev1 "github.com/aws/eks-anywhere/pkg/api/v1alpha1"
-	"github.com/aws/eks-anywhere/pkg/dependencies"
 	"github.com/aws/eks-anywhere/pkg/features"
 	releasev1 "github.com/aws/eks-anywhere/release/api/v1alpha1"
 )
@@ -108,42 +107,35 @@ func main() {
 
 func setupReconcilers(ctx context.Context, mgr ctrl.Manager) {
 	if features.IsActive(features.FullLifecycleAPI()) {
-		// This feature doesn't support running the binaries through docker on the controller image so relying on the
-		// binaries built within the controller image instead. We also can specify a fake executable image for now in
-		// order to get the dependencies to build.
-		os.Setenv("MR_TOOLS_DISABLE", "true")
-		factory := dependencies.NewFactory().UseExecutableImage("test.com/fake-image:1.0")
-		deps, err := factory.WithGovc().Build(ctx)
-		if err != nil {
-			setupLog.Error(err, "unable to build dependencies")
-			os.Exit(1)
-		}
 		logger := ctrl.Log.WithName("remote").WithName("ClusterCacheTracker")
-		tracker, err := remote.NewClusterCacheTracker(
-			mgr,
-			remote.ClusterCacheTrackerOptions{
-				Log:     &logger,
-				Indexes: remote.DefaultIndexes,
-			},
+		client := mgr.GetClient()
+		depsFactory := factory.NewFactory()
+		providerReconcilers, err := factory.BuildClusterReconcilerRegistry(
+			ctx, logger, client, mgr, depsFactory,
 		)
 		if err != nil {
-			setupLog.Error(err, "unable to create cluster cache tracker")
+			setupLog.Error(err, "building provider reconcilers for cluster controller")
 			os.Exit(1)
 		}
 
 		setupLog.Info("Setting up cluster controller")
 		if err := (controllers.NewClusterReconciler(
-			mgr.GetClient(),
+			client,
 			ctrl.Log.WithName("controllers").WithName(anywherev1.ClusterKind),
 			mgr.GetScheme(),
-			deps.Govc,
-			tracker,
+			providerReconcilers,
 		)).SetupWithManager(mgr); err != nil {
 			setupLog.Error(err, "unable to create controller", "controller", anywherev1.ClusterKind)
 			os.Exit(1)
 		}
 
 		setupLog.Info("Setting up vspheredatacenter controller")
+		deps, err := depsFactory.WithGovc().Build(ctx)
+		if err != nil {
+			setupLog.Error(err, "building govc for vspheredatacenter controller")
+			os.Exit(1)
+		}
+
 		if err := (controllers.NewVSphereDatacenterReconciler(
 			mgr.GetClient(),
 			ctrl.Log.WithName("controllers").WithName(anywherev1.VSphereDatacenterKind),

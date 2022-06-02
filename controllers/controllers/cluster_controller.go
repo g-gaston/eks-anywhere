@@ -11,7 +11,6 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	kerrors "k8s.io/apimachinery/pkg/util/errors"
 	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
-	"sigs.k8s.io/cluster-api/controllers/remote"
 	"sigs.k8s.io/cluster-api/util/patch"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -20,12 +19,9 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"sigs.k8s.io/controller-runtime/pkg/source"
 
-	"github.com/aws/eks-anywhere/controllers/controllers/clusters"
+	"github.com/aws/eks-anywhere/controllers/controllers/registry"
 	anywherev1 "github.com/aws/eks-anywhere/pkg/api/v1alpha1"
 	"github.com/aws/eks-anywhere/pkg/constants"
-	"github.com/aws/eks-anywhere/pkg/executables"
-	"github.com/aws/eks-anywhere/pkg/networkutils"
-	"github.com/aws/eks-anywhere/pkg/providers/vsphere"
 )
 
 const (
@@ -35,23 +31,16 @@ const (
 
 // ClusterReconciler reconciles a Cluster object
 type ClusterReconciler struct {
-	client    client.Client
-	log       logr.Logger
-	validator *vsphere.Validator
-	defaulter *vsphere.Defaulter
-	tracker   *remote.ClusterCacheTracker
+	client              client.Client
+	log                 logr.Logger
+	providerReconcilers registry.ClusterReconcilerRegistry
 }
 
-func NewClusterReconciler(client client.Client, log logr.Logger, scheme *runtime.Scheme, govc *executables.Govc, tracker *remote.ClusterCacheTracker) *ClusterReconciler {
-	validator := vsphere.NewValidator(govc, &networkutils.DefaultNetClient{})
-	defaulter := vsphere.NewDefaulter(govc)
-
+func NewClusterReconciler(client client.Client, log logr.Logger, scheme *runtime.Scheme, providerReconcilers registry.ClusterReconcilerRegistry) *ClusterReconciler {
 	return &ClusterReconciler{
-		client:    client,
-		log:       log,
-		validator: validator,
-		defaulter: defaulter,
-		tracker:   tracker,
+		client:              client,
+		log:                 log,
+		providerReconcilers: providerReconcilers,
 	}
 }
 
@@ -127,12 +116,12 @@ func (r *ClusterReconciler) Reconcile(ctx context.Context, req ctrl.Request) (_ 
 }
 
 func (r *ClusterReconciler) reconcile(ctx context.Context, cluster *anywherev1.Cluster, log logr.Logger) (ctrl.Result, error) {
-	clusterProviderReconciler, err := clusters.BuildProviderReconciler(cluster.Spec.DatacenterRef.Kind, r.client, r.log, r.validator, r.defaulter, r.tracker)
-	if err != nil {
-		return ctrl.Result{}, err
+	clusterProviderReconciler := r.providerReconcilers.Get(cluster.Spec.DatacenterRef.Kind)
+	if clusterProviderReconciler == nil {
+		return ctrl.Result{}, fmt.Errorf("no reconciler available for datacenter of type %s", cluster.Spec.DatacenterRef.Kind)
 	}
 
-	reconcileResult, err := clusterProviderReconciler.Reconcile(ctx, cluster)
+	reconcileResult, err := clusterProviderReconciler.Reconcile(ctx, log, cluster)
 	if err != nil {
 		return ctrl.Result{}, err
 	}
