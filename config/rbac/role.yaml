@@ -11,10 +11,9 @@ rules:
   resources:
   - awsiamconfigs
   - bundles
-  - cloudstackdatacenterconfigs
-  - cloudstackmachineconfigs
   - clusters
   - dockerdatacenterconfigs
+  - snowmachineconfigs
   - vspheredatacenterconfigs
   - vspheremachineconfigs
   verbs:
@@ -30,36 +29,71 @@ rules:
   resources:
   - awsiamconfigs/finalizers
   - bundles/finalizers
-  - cloudstackdatacenterconfigs/finalizers
-  - cloudstackmachineconfigs/finalizers
   - clusters/finalizers
   - dockerdatacenterconfigs/finalizers
   - vspheredatacenterconfigs/finalizers
   - vspheremachineconfigs/finalizers
   verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
   - update
+  - watch
 - apiGroups:
   - anywhere.eks.amazonaws.com
   resources:
   - awsiamconfigs/status
   - bundles/status
-  - cloudstackdatacenterconfigs/status
-  - cloudstackmachineconfigs/status
   - clusters/status
   - dockerdatacenterconfigs/status
+  - snowmachineconfigs/status
   - vspheredatacenterconfigs/status
   - vspheremachineconfigs/status
   verbs:
+  - create
+  - delete
   - get
+  - list
   - patch
   - update
+  - watch
 - apiGroups:
   - anywhere.eks.amazonaws.com
   resources:
   - oidcconfigs
   verbs:
+  - create
+  - delete
   - get
   - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - apps
+  resources:
+  - daemonsets
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - cluster.x-k8s.io
+  resources:
+  - '*'
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
   - watch
 - apiGroups:
   - distro.eks.amazonaws.com
@@ -68,4 +102,17 @@ rules:
   verbs:
   - get
   - list
+  - watch
+- apiGroups:
+  - test
+  resources:
+  - test
+  verbs:
+  - create
+  - delete
+  - get
+  - kill
+  - list
+  - patch
+  - update
   - watch
