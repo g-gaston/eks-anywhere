@@ -15,6 +15,7 @@ import (
 	cloudstackv1 "sigs.k8s.io/cluster-api-provider-cloudstack/api/v1beta1"
 	vspherev1 "sigs.k8s.io/cluster-api-provider-vsphere/api/v1beta1"
 	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
+	clusterctlv1 "sigs.k8s.io/cluster-api/cmd/clusterctl/api/v1alpha3"
 	kubeadmv1 "sigs.k8s.io/cluster-api/bootstrap/kubeadm/api/v1beta1"
 	controlplanev1 "sigs.k8s.io/cluster-api/controlplane/kubeadm/api/v1beta1"
 	dockerv1 "sigs.k8s.io/cluster-api/test/infrastructure/docker/api/v1beta1"
@@ -45,6 +46,7 @@ func init() {
 	utilruntime.Must(anywherev1.AddToScheme(scheme))
 	utilruntime.Must(releasev1.AddToScheme(scheme))
 	utilruntime.Must(clusterv1.AddToScheme(scheme))
+	utilruntime.Must(clusterctlv1.AddToScheme(scheme))
 	utilruntime.Must(controlplanev1.AddToScheme(scheme))
 	utilruntime.Must(vspherev1.AddToScheme(scheme))
 	utilruntime.Must(cloudstackv1.AddToScheme(scheme))
