@@ -77,7 +77,21 @@ func (p *providerClusterReconciler) bundles(ctx context.Context, name, namespace
 }
 
 func (p *providerClusterReconciler) GetClusterSpec(ctx context.Context, cs *anywherev1.Cluster) (*cluster.Spec, error) {
-	return cluster.BuildSpecForCluster(ctx, cs, p.bundles, p.eksdRelease, nil, nil, nil)
+	managementCluster := cs
+	if cs.IsManaged() {
+		// TODO: super hacky: since we look for the bundle based on name (bundle has the same name as the management cluster)
+		// we create a copy of the cluster and rename it to the management cluster name, then undo the changes before returning
+		managementCluster = cs.DeepCopy()
+		managementCluster.Name = cs.Spec.ManagementCluster.Name
+	}
+
+	spec, err := cluster.BuildSpecForCluster(ctx, managementCluster, p.bundles, p.eksdRelease, nil, nil, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	spec.Cluster = cs
+	return spec, nil
 }
 
 func (p *providerClusterReconciler) getCAPICluster(ctx context.Context, cluster *anywherev1.Cluster) (*clusterv1.Cluster, error) {
