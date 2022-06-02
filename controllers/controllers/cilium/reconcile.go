@@ -33,24 +33,26 @@ func NewReconciler(generator YamlGenerator) Reconciler {
 }
 
 func (r Reconciler) Reconcile(ctx context.Context, log logr.Logger, client client.Client, clusterSpec *cluster.Spec) (reconciler.Result, error) {
-	needsUpgrade, err := ciliumNeedsUpgrade(ctx, client, clusterSpec)
+	needsUpgrade, err := ciliumNeedsUpgrade(ctx, log, client, clusterSpec)
 	if err != nil {
 		return reconciler.Result{}, err
 	}
 
 	if !needsUpgrade {
-		log.Info("cilium already updated")
+		log.Info("Cilium already updated")
 	}
 
-	log.Info("Installing Cilium")
+	log.Info("Deploying")
 
 	// TODO: figure out better way to pass namespaces
 	// TODO: rewrite this into a proper upgrade flow:
 	// TODO: installing the preflights before hand, waiting for it to be ready, etc.
+	log.Info("Generating manifest")
 	ciliumSpec, err := r.generator.GenerateManifest(ctx, clusterSpec, []string{constants.CapvSystemNamespace})
 	if err != nil {
 		return reconciler.Result{}, err
 	}
+	log.Info("Reconciling Cilium")
 	if err := reconciler.ReconcileYaml(ctx, client, ciliumSpec); err != nil {
 		return reconciler.Result{}, err
 	}
@@ -84,35 +86,40 @@ func getCiliumDeployment(ctx context.Context, client client.Client) (*v1.Deploym
 	return deployment, nil
 }
 
-func ciliumNeedsUpgrade(ctx context.Context, client client.Client, clusterSpec *cluster.Spec) (bool, error) {
-	needsUpgrade, err := ciliumDSNeedsUpgrade(ctx, client, clusterSpec)
+func ciliumNeedsUpgrade(ctx context.Context, log logr.Logger, client client.Client, clusterSpec *cluster.Spec) (bool, error) {
+	log.Info("Checking if Cilium DS needs upgrade")
+	needsUpgrade, err := ciliumDSNeedsUpgrade(ctx, log, client, clusterSpec)
 	if err != nil {
 		return false, err
 	}
 
 	if needsUpgrade {
+		log.Info("Cilium DS needs upgrade")
 		return true, nil
 	}
 
-	needsUpgrade, err = ciliumOperatorNeedsUpgrade(ctx, client, clusterSpec)
+	log.Info("Checking if Cilium operator deployment needs upgrade")
+	needsUpgrade, err = ciliumOperatorNeedsUpgrade(ctx, log, client, clusterSpec)
 	if err != nil {
 		return false, err
 	}
 
 	if needsUpgrade {
+		log.Info("Cilium operator deployment needs upgrade")
 		return true, nil
 	}
 
 	return false, nil
 }
 
-func ciliumDSNeedsUpgrade(ctx context.Context, client client.Client, clusterSpec *cluster.Spec) (bool, error) {
+func ciliumDSNeedsUpgrade(ctx context.Context, log logr.Logger, client client.Client, clusterSpec *cluster.Spec) (bool, error) {
 	ds, err := getCiliumDS(ctx, client)
 	if err != nil {
 		return false, err
 	}
 
 	if ds == nil {
+		log.Info("Cilium DS doesn't exist")
 		return true, nil
 	}
 
@@ -120,6 +127,7 @@ func ciliumDSNeedsUpgrade(ctx context.Context, client client.Client, clusterSpec
 	containers := make([]corev1.Container, 0, len(ds.Spec.Template.Spec.Containers)+len(ds.Spec.Template.Spec.InitContainers))
 	for _, c := range containers {
 		if c.Image != dsImage {
+			log.Info("Cilium DS container needs upgrade", "container", c.Name)
 			return true, nil
 		}
 	}
@@ -127,13 +135,14 @@ func ciliumDSNeedsUpgrade(ctx context.Context, client client.Client, clusterSpec
 	return false, nil
 }
 
-func ciliumOperatorNeedsUpgrade(ctx context.Context, client client.Client, clusterSpec *cluster.Spec) (bool, error) {
+func ciliumOperatorNeedsUpgrade(ctx context.Context, log logr.Logger, client client.Client, clusterSpec *cluster.Spec) (bool, error) {
 	operator, err := getCiliumDeployment(ctx, client)
 	if err != nil {
 		return false, err
 	}
 
 	if operator == nil {
+		log.Info("Cilium operator deployment doesn't exist")
 		return true, nil
 	}
 

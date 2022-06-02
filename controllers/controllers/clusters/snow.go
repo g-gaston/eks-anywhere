@@ -29,7 +29,7 @@ func (s *SnowClusterReconciler) Reconcile(ctx context.Context, log logr.Logger, 
 	if err != nil {
 		return reconciler.Result{}, err
 	}
-	
+
 	return newRunner().register(
 		s.reconcileControlPlane,
 		s.checkControlPlaneReady,
@@ -39,11 +39,14 @@ func (s *SnowClusterReconciler) Reconcile(ctx context.Context, log logr.Logger, 
 }
 
 func (s *SnowClusterReconciler) reconcileControlPlane(ctx context.Context, log logr.Logger, clusterSpec *cluster.Spec) (reconciler.Result, error) {
+	log = log.WithValues("phase", "reconcileControlPlane")
+	log.Info("Generating control plane CAPI objects")
 	controlPlaneObjs, err := snow.ControlPlaneObjects(ctx, clusterSpec, clients.NewKubeClient(s.client))
 	if err != nil {
 		return reconciler.Result{}, err
 	}
 
+	log.Info("Applying control plane objects")
 	if err = reconciler.ReconcileObjects(ctx, s.client, controlPlaneObjs.ClientObjects()); err != nil {
 		return reconciler.Result{}, err
 	}
@@ -52,11 +55,14 @@ func (s *SnowClusterReconciler) reconcileControlPlane(ctx context.Context, log l
 }
 
 func (s *SnowClusterReconciler) reconcileWorkers(ctx context.Context, log logr.Logger, clusterSpec *cluster.Spec) (reconciler.Result, error) {
+	log = log.WithValues("phase", "reconcileWorkers")
+	log.Info("Generating worker CAPI objects")
 	workerObjs, err := snow.WorkersObjects(ctx, clusterSpec, clients.NewKubeClient(s.client))
 	if err != nil {
 		return reconciler.Result{}, err
 	}
 
+	log.Info("Applying worker CAPI objects")
 	if err = reconciler.ReconcileObjects(ctx, s.client, workerObjs); err != nil {
 		return reconciler.Result{}, err
 	}

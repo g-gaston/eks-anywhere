@@ -98,6 +98,7 @@ func (p *providerClusterReconciler) getCAPICluster(ctx context.Context, cluster 
 }
 
 func (p *providerClusterReconciler) checkControlPlaneReady(ctx context.Context, log logr.Logger, clusterSpec *cluster.Spec) (reconciler.Result, error) {
+	log = log.WithValues("phase", "checkControlPlaneReady")
 	capiCluster, err := p.getCAPICluster(ctx, clusterSpec.Cluster)
 	if err != nil {
 		return reconciler.Result{}, err
@@ -109,14 +110,16 @@ func (p *providerClusterReconciler) checkControlPlaneReady(ctx context.Context, 
 	}
 
 	if !conditions.IsTrue(capiCluster, controlPlaneReadyCondition) {
-		log.Info("CAPI is not ready yet")
+		log.Info("CAPI control plane is not ready yet")
 		return reconciler.ResultWithReturn(), nil
 	}
 
+	log.Info("CAPI control plane is ready!")
 	return reconciler.Result{}, nil
 }
 
 func (p *providerClusterReconciler) reconcileCilium(ctx context.Context, log logr.Logger, clusterSpec *cluster.Spec) (reconciler.Result, error) {
+	log = log.WithValues("phase", "reconcileCilium")
 	capiCluster, err := p.getCAPICluster(ctx, clusterSpec.Cluster)
 	if err != nil {
 		return reconciler.Result{}, err
