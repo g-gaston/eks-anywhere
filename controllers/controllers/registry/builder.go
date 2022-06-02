@@ -5,7 +5,9 @@ type Builder struct {
 }
 
 func NewBuilder() Builder {
-	return Builder{}
+	return Builder{
+		reconciler: NewClusterReconcilerRegistry(),
+	}
 }
 
 func (b Builder) Add(kind string, reconciler ProviderClusterReconciler) {
