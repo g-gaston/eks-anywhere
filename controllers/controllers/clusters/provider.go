@@ -76,7 +76,7 @@ func (p *providerClusterReconciler) bundles(ctx context.Context, name, namespace
 	return clusterBundle, nil
 }
 
-func (p *providerClusterReconciler) GetClusterSpec(ctx context.Context, cs *anywherev1.Cluster) (*cluster.Spec, error) {
+func (p *providerClusterReconciler) GetClusterSpec(ctx context.Context, log logr.Logger, cs *anywherev1.Cluster) (*cluster.Spec, error) {
 	managementCluster := cs
 	if cs.IsManaged() {
 		// TODO: super hacky: since we look for the bundle based on name (bundle has the same name as the management cluster)
@@ -91,7 +91,7 @@ func (p *providerClusterReconciler) GetClusterSpec(ctx context.Context, cs *anyw
 	}
 
 	spec.Cluster = cs
-	return spec, nil
+	return p.populateClusterSpec(ctx, log, spec)
 }
 
 func (p *providerClusterReconciler) getCAPICluster(ctx context.Context, cluster *anywherev1.Cluster) (*clusterv1.Cluster, error) {
@@ -150,4 +150,28 @@ func (p *providerClusterReconciler) reconcileCilium(ctx context.Context, log log
 	}
 
 	return p.ciliumReconciler.Reconcile(ctx, log, remoteClient, clusterSpec)
+}
+
+func (p *providerClusterReconciler) populateClusterSpec(ctx context.Context, log logr.Logger, clusterSpec *cluster.Spec) (*cluster.Spec, error) {
+	log.Info("Populating clusterSpec with cluster objects")
+	if clusterSpec.Cluster.Spec.DatacenterRef.Kind != anywherev1.SnowDatacenterKind {
+		log.Info("ClusterSpec building not supported for provider, reconcile might fail", "kind", clusterSpec.Cluster.Spec.DatacenterRef)
+	}
+	machineConfigRefs := clusterSpec.Cluster.MachineConfigRefs()
+	if clusterSpec.Config.SnowMachineConfigs == nil {
+		clusterSpec.Config.SnowMachineConfigs = make(map[string]*anywherev1.SnowMachineConfig, len(machineConfigRefs))
+	}
+
+	log.Info("Populating clusterSpec with Snow machine configs")
+	for _, m := range machineConfigRefs {
+		machine := &anywherev1.SnowMachineConfig{}
+		key := types.NamespacedName{Namespace: clusterSpec.Cluster.Namespace, Name: m.Name}
+		if err := p.client.Get(ctx, key, machine); err != nil {
+			return nil, err
+		}
+
+		clusterSpec.Config.SnowMachineConfigs[machine.Name] = machine
+	}
+
+	return clusterSpec, nil
 }

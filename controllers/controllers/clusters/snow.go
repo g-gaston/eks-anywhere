@@ -25,7 +25,8 @@ func NewSnowClusterReconciler(client client.Client, tracker *remote.ClusterCache
 }
 
 func (s *SnowClusterReconciler) Reconcile(ctx context.Context, log logr.Logger, cluster *anywherev1.Cluster) (reconciler.Result, error) {
-	clusterSpec, err := s.GetClusterSpec(ctx, cluster)
+	log = log.WithValues("provider", "snow")
+	clusterSpec, err := s.GetClusterSpec(ctx, log, cluster)
 	if err != nil {
 		return reconciler.Result{}, err
 	}
