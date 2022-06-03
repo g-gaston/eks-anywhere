@@ -180,7 +180,7 @@ func (r *ClusterReconciler) objectWithClusterLabelNameToCluster(obj client.Objec
 
 	return []ctrl.Request{{
 		NamespacedName: types.NamespacedName{
-			Namespace: obj.GetNamespace(),
+			Namespace: "default", // TODO: figure a better way of doing this, eksa objects might not be in default
 			Name:      clusterName,
 		},
 	}}
