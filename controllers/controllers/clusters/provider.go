@@ -175,3 +175,10 @@ func (p *providerClusterReconciler) populateClusterSpec(ctx context.Context, log
 
 	return clusterSpec, nil
 }
+
+func (p *providerClusterReconciler) verifyClusterReconciled(ctx context.Context, log logr.Logger, clusterSpec *cluster.Spec) (reconciler.Result, error) {
+	// TODO: implement
+
+	log.Info("Cluster reconciled successfully!")
+	return reconciler.Result{}, nil
+}

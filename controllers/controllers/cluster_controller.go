@@ -186,6 +186,7 @@ func (r *ClusterReconciler) objectWithClusterLabelNameToCluster(obj client.Objec
 		return nil
 	}
 
+	r.log.Info("Enqueuing request coming from CAPI Cluster", "cluster", obj.GetName())
 	return []ctrl.Request{{
 		NamespacedName: types.NamespacedName{
 			Namespace: "default", // TODO: figure a better way of doing this, eksa objects might not be in default
@@ -208,12 +209,12 @@ func CAPIClusterUpdateControlPlaneReady(logger logr.Logger) predicate.Funcs {
 			log = log.WithValues("namespace", newCluster.Namespace, "cluster", newCluster.Name)
 
 			if conditions.IsTrue(oldCluster, "ControlPlaneReady") {
-				log.V(6).Info("Cluster control plane was already ready, blocking further processing")
+				log.V(4).Info("Cluster control plane was already ready, blocking further processing")
 				return false
 			}
 
 			if conditions.IsTrue(newCluster, "ControlPlaneReady") {
-				log.V(6).Info("Cluster control plane has become ready, allowing further processing")
+				log.V(4).Info("Cluster control plane has become ready, allowing further processing")
 				return true
 			}
 

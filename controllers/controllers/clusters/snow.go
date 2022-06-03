@@ -36,6 +36,7 @@ func (s *SnowClusterReconciler) Reconcile(ctx context.Context, log logr.Logger, 
 		s.checkControlPlaneReady,
 		s.reconcileCilium,
 		s.reconcileWorkers,
+		s.verifyClusterReconciled,
 	).run(ctx, log, clusterSpec)
 }
 
