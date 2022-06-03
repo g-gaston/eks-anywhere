@@ -10,12 +10,16 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	kerrors "k8s.io/apimachinery/pkg/util/errors"
-	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
+	clusterapiv1 "sigs.k8s.io/cluster-api/api/v1beta1"
+	"sigs.k8s.io/cluster-api/util/conditions"
 	"sigs.k8s.io/cluster-api/util/patch"
 	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
+	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
+	"sigs.k8s.io/controller-runtime/pkg/predicate"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"sigs.k8s.io/controller-runtime/pkg/source"
 
@@ -48,7 +52,11 @@ func NewClusterReconciler(client client.Client, log logr.Logger, scheme *runtime
 func (r *ClusterReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&anywherev1.Cluster{}).
-		Watches(&source.Kind{Type: &clusterv1.Cluster{}}, handler.EnqueueRequestsFromMapFunc(r.capiClusterToCluster)).
+		Watches(
+			&source.Kind{Type: &clusterapiv1.Cluster{}},
+			handler.EnqueueRequestsFromMapFunc(r.capiClusterToCluster),
+			builder.WithPredicates(CAPIClusterUpdateControlPlaneReady(r.log)),
+		).
 		// Watches(&source.Kind{Type: &anywherev1.VSphereDatacenterConfig{}}, &handler.EnqueueRequestForObject{}).
 		// Watches(&source.Kind{Type: &anywherev1.VSphereMachineConfig{}}, &handler.EnqueueRequestForObject{}).
 		Complete(r)
@@ -134,7 +142,7 @@ func (r *ClusterReconciler) reconcile(ctx context.Context, cluster *anywherev1.C
 }
 
 func (r *ClusterReconciler) reconcileDelete(ctx context.Context, cluster *anywherev1.Cluster) (ctrl.Result, error) {
-	capiCluster := &clusterv1.Cluster{}
+	capiCluster := &clusterapiv1.Cluster{}
 	capiClusterName := types.NamespacedName{Namespace: constants.EksaSystemNamespace, Name: cluster.Name}
 	r.log.Info("Deleting", "name", cluster.Name)
 	err := r.client.Get(ctx, capiClusterName, capiCluster)
@@ -160,7 +168,7 @@ func (r *ClusterReconciler) reconcileDelete(ctx context.Context, cluster *anywhe
 }
 
 func (r *ClusterReconciler) capiClusterToCluster(o client.Object) []ctrl.Request {
-	capiCluster, ok := o.(*clusterv1.Cluster)
+	capiCluster, ok := o.(*clusterapiv1.Cluster)
 	if !ok {
 		panic(fmt.Sprintf("Expected a CAPI Cluster but got a %T", o))
 	}
@@ -184,4 +192,30 @@ func (r *ClusterReconciler) objectWithClusterLabelNameToCluster(obj client.Objec
 			Name:      clusterName,
 		},
 	}}
+}
+
+func CAPIClusterUpdateControlPlaneReady(logger logr.Logger) predicate.Funcs {
+	return predicate.Funcs{
+		UpdateFunc: func(e event.UpdateEvent) bool {
+			log := logger.WithValues("predicate", "ClusterUpdateControlPlaneReady", "eventType", "update")
+
+			c, ok := e.ObjectNew.(*clusterapiv1.Cluster)
+			if !ok {
+				log.V(4).Info("Expected Cluster", "type", fmt.Sprintf("%T", e.ObjectNew))
+				return false
+			}
+			log = log.WithValues("namespace", c.Namespace, "cluster", c.Name)
+
+			if conditions.IsTrue(c, "ControlPlaneReady") {
+				log.V(6).Info("Cluster control plane is ready, allowing further processing")
+				return true
+			}
+
+			log.V(4).Info("Cluster control plane is not ready, blocking further processing")
+			return false
+		},
+		CreateFunc:  func(e event.CreateEvent) bool { return false },
+		DeleteFunc:  func(e event.DeleteEvent) bool { return false },
+		GenericFunc: func(e event.GenericEvent) bool { return false },
+	}
 }
