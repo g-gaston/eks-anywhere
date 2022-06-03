@@ -40,6 +40,7 @@ func (r Reconciler) Reconcile(ctx context.Context, log logr.Logger, client clien
 
 	if !needsUpgrade {
 		log.Info("Cilium already updated")
+		return reconciler.Result{}, nil
 	}
 
 	log.Info("Deploying")
