@@ -199,15 +199,21 @@ func CAPIClusterUpdateControlPlaneReady(logger logr.Logger) predicate.Funcs {
 		UpdateFunc: func(e event.UpdateEvent) bool {
 			log := logger.WithValues("predicate", "ClusterUpdateControlPlaneReady", "eventType", "update")
 
-			c, ok := e.ObjectNew.(*clusterapiv1.Cluster)
-			if !ok {
-				log.V(4).Info("Expected Cluster", "type", fmt.Sprintf("%T", e.ObjectNew))
+			newCluster := extractCAPICluster(log, e.ObjectNew)
+			oldCluster := extractCAPICluster(log, e.ObjectOld)
+			if newCluster == nil || oldCluster == nil {
 				return false
 			}
-			log = log.WithValues("namespace", c.Namespace, "cluster", c.Name)
 
-			if conditions.IsTrue(c, "ControlPlaneReady") {
-				log.V(6).Info("Cluster control plane is ready, allowing further processing")
+			log = log.WithValues("namespace", newCluster.Namespace, "cluster", newCluster.Name)
+
+			if conditions.IsTrue(oldCluster, "ControlPlaneReady") {
+				log.V(6).Info("Cluster control plane was already ready, blocking further processing")
+				return false
+			}
+
+			if conditions.IsTrue(newCluster, "ControlPlaneReady") {
+				log.V(6).Info("Cluster control plane has become ready, allowing further processing")
 				return true
 			}
 
@@ -218,4 +224,14 @@ func CAPIClusterUpdateControlPlaneReady(logger logr.Logger) predicate.Funcs {
 		DeleteFunc:  func(e event.DeleteEvent) bool { return false },
 		GenericFunc: func(e event.GenericEvent) bool { return false },
 	}
+}
+
+func extractCAPICluster(log logr.Logger, obj client.Object) *clusterapiv1.Cluster {
+	c, ok := obj.(*clusterapiv1.Cluster)
+	if !ok {
+		log.V(4).Info("Expected Cluster", "type", fmt.Sprintf("%T", obj))
+		return nil
+	}
+
+	return c
 }
