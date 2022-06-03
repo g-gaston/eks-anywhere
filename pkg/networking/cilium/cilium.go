@@ -27,7 +27,8 @@ func (c *Cilium) GenerateManifest(ctx context.Context, clusterSpec *cluster.Spec
 		return nil, err
 	}
 
-	if clusterSpec.Cluster.Spec.ClusterNetwork.CNIConfig.Cilium.PolicyEnforcementMode != v1alpha1.CiliumPolicyModeAlways {
+	// TODO: remove this
+	if clusterSpec.Cluster.Spec.ClusterNetwork.CNIConfig != nil && clusterSpec.Cluster.Spec.ClusterNetwork.CNIConfig.Cilium.PolicyEnforcementMode != v1alpha1.CiliumPolicyModeAlways {
 		return ciliumManifest, nil
 	}
 

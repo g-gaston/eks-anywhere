@@ -169,7 +169,8 @@ func templateValues(spec *cluster.Spec) values {
 		},
 	}
 
-	if spec.Cluster.Spec.ClusterNetwork.CNIConfig.Cilium.PolicyEnforcementMode != "" {
+	// TODO: remove this
+	if spec.Cluster.Spec.ClusterNetwork.CNIConfig != nil && spec.Cluster.Spec.ClusterNetwork.CNIConfig.Cilium.PolicyEnforcementMode != "" {
 		val["policyEnforcementMode"] = spec.Cluster.Spec.ClusterNetwork.CNIConfig.Cilium.PolicyEnforcementMode
 	}
 	return val
