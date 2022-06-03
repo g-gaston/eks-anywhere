@@ -88,7 +88,7 @@ func newClusterReconcilerRegistryFactory(log logr.Logger, client client.Client, 
 
 func (f *clusterReconcilerRegistryFactory) withSnowReconciler() *clusterReconcilerRegistryFactory {
 	f.dependencyFactory.WithHelm()
-	f.withTracker()
+	f.withTracker().withCiliumReconciler()
 
 	f.buildSteps = append(f.buildSteps, func(ctx context.Context) error {
 		f.builder.Add(anywherev1.SnowDatacenterKind, clusters.NewSnowClusterReconciler(
