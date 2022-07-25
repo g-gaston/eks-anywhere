@@ -1238,6 +1238,98 @@ func TestClusterValidateCreateSelfManagedNotPaused(t *testing.T) {
 	g.Expect(cluster.ValidateCreate().Error()).To(ContainSubstring("not supported for self managed clusters"))
 }
 
+func TestClusterValidateCreateInvalidClusterv2(t *testing.T) {
+	tests := []struct {
+		name               string
+		featureGateEnabled bool
+		cluster            *v1alpha1.Cluster
+	}{
+		{
+			name: "Paused self-managed cluster, feature gate off",
+			cluster: newCluster(func(c *v1alpha1.Cluster) {
+				c.SetSelfManaged()
+				c.PauseReconcile()
+			}),
+			featureGateEnabled: false,
+		},
+		{
+			name: "Unpaused self-managed cluster, feature gate off",
+			cluster: newCluster(func(c *v1alpha1.Cluster) {
+				c.SetSelfManaged()
+			}),
+			featureGateEnabled: false,
+		},
+		{
+			name: "Paused workload cluster, feature gate off",
+			cluster: newCluster(func(c *v1alpha1.Cluster) {
+				c.SetManagedBy("my-management-cluster")
+				c.PauseReconcile()
+			}),
+			featureGateEnabled: false,
+		},
+		{
+			name: "Unpaused workload cluster, feature gate off",
+			cluster: newCluster(func(c *v1alpha1.Cluster) {
+				c.SetManagedBy("my-management-cluster")
+			}),
+			featureGateEnabled: false,
+		},
+		{
+			name: "Paused self-managed cluster, feature gate on",
+			cluster: newCluster(func(c *v1alpha1.Cluster) {
+				c.SetSelfManaged()
+				c.PauseReconcile()
+			}),
+			featureGateEnabled: true,
+		},
+		{
+			name: "Unpaused self-managed cluster, feature gate on",
+			cluster: newCluster(func(c *v1alpha1.Cluster) {
+				c.SetSelfManaged()
+			}),
+			featureGateEnabled: true,
+		},
+		{
+			name: "Paused workload cluster, feature gate on",
+			cluster: newCluster(func(c *v1alpha1.Cluster) {
+				c.SetManagedBy("my-management-cluster")
+				c.PauseReconcile()
+			}),
+			featureGateEnabled: true,
+		},
+		{
+			name: "Unpaused workload cluster, feature gate on",
+			cluster: newCluster(func(c *v1alpha1.Cluster) {
+				c.SetManagedBy("my-management-cluster")
+			}),
+			featureGateEnabled: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			features.ClearCache()
+			if tt.featureGateEnabled {
+				t.Setenv(features.FullLifecycleAPIEnvVar, "true")
+			}
+
+			// Invalid control plane configuration
+			tt.cluster.Spec.ControlPlaneConfiguration = v1alpha1.ControlPlaneConfiguration{}
+
+			g := NewWithT(t)
+			g.Expect(tt.cluster.ValidateCreate()).To(MatchError(ContainSubstring("control plane node count must be positive")))
+		})
+	}
+}
+
+func newCluster(opts ...func(*v1alpha1.Cluster)) *v1alpha1.Cluster {
+	c := createCluster()
+	for _, o := range opts {
+		o(c)
+	}
+
+	return c
+}
+
 func createCluster() *v1alpha1.Cluster {
 	return &v1alpha1.Cluster{
 		TypeMeta: metav1.TypeMeta{

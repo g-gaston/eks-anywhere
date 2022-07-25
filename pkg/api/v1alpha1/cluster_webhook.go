@@ -60,15 +60,12 @@ func (r *Cluster) ValidateCreate() error {
 		allErrs = append(allErrs, err)
 	}
 
-	if r.IsReconcilePaused() {
-		clusterlog.Info("cluster is paused, so allowing create", "name", r.Name)
-		return nil
-	}
-	if !features.IsActive(features.FullLifecycleAPI()) {
-		allErrs = append(allErrs, fmt.Errorf("creating new cluster on existing cluster is not supported"))
-	}
-	if r.IsSelfManaged() {
-		allErrs = append(allErrs, fmt.Errorf("creating new cluster on existing cluster is not supported for self managed clusters"))
+	if !r.IsReconcilePaused() {
+		if r.IsSelfManaged() {
+			allErrs = append(allErrs, fmt.Errorf("creating new cluster on existing cluster is not supported for self managed clusters"))
+		} else if !features.IsActive(features.FullLifecycleAPI()) {
+			allErrs = append(allErrs, fmt.Errorf("creating new managed cluster on existing cluster is not supported"))
+		}
 	}
 
 	if len(allErrs) > 0 {
