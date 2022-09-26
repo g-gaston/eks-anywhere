@@ -16,7 +16,7 @@ type (
 	// APIObjectGenerator returns an implementor of the APIObject interface
 	APIObjectGenerator func() APIObject
 	// ParsedProcessor fills the struct of type T with the parsed API objects in ObjectLookup
-	ParsedProcessor[T any] func(*T, ObjectLookup)
+	ParsedProcessor[T any] func(T, ObjectLookup)
 
 	// Parser allows to parse from yaml with kubernetes style objects and
 	// store them in a type T
@@ -87,18 +87,18 @@ func (c *Parser[T]) RegisterProcessors(processors ...ParsedProcessor[T]) {
 }
 
 // Parse reads yaml manifest content with and generates the corresponding T
-func (c *Parser[T]) Parse(yamlManifest []byte) (*T, error) {
-	return c.Read(bytes.NewReader(yamlManifest))
+func (c *Parser[T]) Parse(yamlManifest []byte, obj T) error {
+	return c.Read(bytes.NewReader(yamlManifest), obj)
 }
 
 // Read reads yaml manifest and generates the corresponding T
-func (c *Parser[T]) Read(reader io.Reader) (*T, error) {
+func (c *Parser[T]) Read(reader io.Reader, obj T) error {
 	parsed, err := c.unmarshal(reader)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
-	return c.buildConfigFromParsed(parsed)
+	return c.buildConfigFromParsed(parsed, obj)
 }
 
 type basicAPIObject struct {
@@ -161,11 +161,10 @@ func (c Parser[T]) unmarshal(reader io.Reader) (*parsed, error) {
 	return parsed, nil
 }
 
-func (c Parser[T]) buildConfigFromParsed(p *parsed) (*T, error) {
-	t := new(T)
+func (c Parser[T]) buildConfigFromParsed(p *parsed, t T) error {
 	for _, processor := range c.processors {
 		processor(t, p.objects)
 	}
 
-	return t, nil
+	return nil
 }

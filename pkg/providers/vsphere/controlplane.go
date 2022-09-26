@@ -17,15 +17,18 @@ import (
 	"github.com/aws/eks-anywhere/pkg/yamlutil"
 )
 
-// ControlPlane represents a CAPI docker control plane
-type ControlPlane = clusterapi.ControlPlane[*vspherev1.VSphereCluster, *vspherev1.VSphereMachineTemplate, ProviderControlPlane]
+// BaseControlPlane represents a CAPI docker control plane
+type BaseControlPlane = clusterapi.ControlPlane[*vspherev1.VSphereCluster, *vspherev1.VSphereMachineTemplate]
+type ParseControlPlane = yamlcapi.ControlPlane[*vspherev1.VSphereCluster, *vspherev1.VSphereMachineTemplate]
 
-// ProviderControlPlane holds the vsphere specific objects for a CAPI docker control plane
-type ProviderControlPlane struct {
+
+// ControlPlane holds the vsphere specific objects for a CAPI docker control plane
+type ControlPlane struct {
+	BaseControlPlane
 	Secrets []*corev1.Secret
 }
 
-func (p ProviderControlPlane) Objects() []kubernetes.Object {
+func (p ControlPlane) Objects() []kubernetes.Object {
 	o := make([]kubernetes.Object, 0, len(p.Secrets))
 	for _, s := range p.Secrets {
 		o = append(o, s)
@@ -55,7 +58,11 @@ func ControlPlaneSpec(ctx context.Context, logger logr.Logger, client kubernetes
 		return nil, err
 	}
 
-	cp, err := parser.Parse(controlPlaneYaml)
+	cp := &ControlPlane{}
+	var cpg yamlcapi.ControlPlane[*vspherev1.VSphereCluster, *vspherev1.VSphereMachineTemplate]
+	cpg = cp
+
+	err = parser.Parse(controlPlaneYaml, cpg)
 	if err != nil {
 		return nil, errors.Wrap(err, "parsing docker control plane yaml")
 	}
@@ -67,8 +74,8 @@ func ControlPlaneSpec(ctx context.Context, logger logr.Logger, client kubernetes
 	return cp, nil
 }
 
-func newControlPlaneParser(logger logr.Logger) (*yamlutil.Parser[ControlPlane], error) {
-	parser, err := yamlcapi.NewControlPlaneParser[*vspherev1.VSphereCluster, *vspherev1.VSphereMachineTemplate, ProviderControlPlane](
+func newControlPlaneParser(logger logr.Logger) (*yamlutil.Parser[ParseControlPlane], error) {
+	parser, err := yamlcapi.NewControlPlaneParser[*vspherev1.VSphereCluster, *vspherev1.VSphereMachineTemplate](
 		logger,
 		yamlutil.NewMapping(
 			"VSphereCluster",
@@ -104,7 +111,7 @@ func newControlPlaneParser(logger logr.Logger) (*yamlutil.Parser[ControlPlane], 
 	return parser, nil
 }
 
-func processSecret(c *ControlPlane, lookup yamlutil.ObjectLookup) {
+func processSecret(c *ParseControlPlane, lookup yamlutil.ObjectLookup) {
 	for _, obj := range lookup {
 		if obj.GetObjectKind().GroupVersionKind().Kind == "Secret" {
 			c.Provider.Secrets = append(c.Provider.Secrets, obj.(*corev1.Secret))

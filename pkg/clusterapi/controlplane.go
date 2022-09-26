@@ -39,24 +39,40 @@ type ObjectComparator[O Object] func(current, new O) bool
 type ObjectRetriever[O Object] func(ctx context.Context, client kubernetes.Client, name, namespace string) (O, error)
 
 // ControlPlane represents the spec for a CAPI control plane for an specific provider
-type ControlPlane[C, M Object, P ProviderControlPlane] struct {
+type ControlPlane[C, M Object] struct {
 	Cluster                     *clusterv1.Cluster
 	ProviderCluster             C
 	KubeadmControlPlane         *controlplanev1.KubeadmControlPlane
 	ControlPlaneMachineTemplate M
 	EtcdMachineTemplate         M
 	EtcdCluster                 *etcdv1.EtcdadmCluster
-
-	// Provider holds the provider specific components for the control plane
-	Provider P
 }
 
-// Objects returns all API objects that form a concrete control plane for an specific provider
-func (cp *ControlPlane[C, M, P]) Objects() []kubernetes.Object {
-	objs := cp.Provider.Objects()
-	objs = append(objs, cp.Cluster, cp.KubeadmControlPlane)
+func (*ControlPlane[C, M]) GetCluster() *clusterv1.Cluster {
+	return nil
+}
+
+func (*ControlPlane[C, M]) SetCluster(*clusterv1.Cluster) {
+}
+
+func (*ControlPlane[C, M]) SetKubeadmControlPlane(*controlplanev1.KubeadmControlPlane) {
+}
+
+func (*ControlPlane[C, M]) SetControlPlaneMachineTemplate(M) {
+}
+
+func (*ControlPlane[C, M]) SetProviderCluster(C) {
+}
+
+func (*ControlPlane[C, M]) SetEtcdAdmCluster(*etcdv1.EtcdadmCluster) {}
+func (*ControlPlane[C, M]) SetEtcdAdmMachineTemplate(M)              {}
+
+// Objects returns all API objects that from a concrete control plane for an specific provider
+func (cp *ControlPlane[C, M]) Objects() []kubernetes.Object {
+	objs := make([]kubernetes.Object, 0, 4)
+	objs = append(objs, cp.Cluster, cp.KubeadmControlPlane, cp.ProviderCluster, cp.ControlPlaneMachineTemplate)
 	if cp.EtcdCluster != nil {
-		objs = append(objs, cp.EtcdCluster)
+		objs = append(objs, cp.EtcdCluster, cp.EtcdMachineTemplate)
 	}
 
 	return objs
@@ -66,7 +82,7 @@ func (cp *ControlPlane[C, M, P]) Objects() []kubernetes.Object {
 // with the current state of the cluster. If they had, it generates a new name for them by increasing a monotonic number
 // at the end of the name
 // This is applied to all provider machine templates
-func (cp *ControlPlane[C, M, P]) UpdateImmutableObjectNames(
+func (cp *ControlPlane[C, M]) UpdateImmutableObjectNames(
 	ctx context.Context,
 	client kubernetes.Client,
 	machineTemplateRetriever ObjectRetriever[M],
