@@ -6,12 +6,16 @@ import (
 	"github.com/aws/eks-anywhere/pkg/cluster"
 	"github.com/aws/eks-anywhere/pkg/workflow"
 	"github.com/aws/eks-anywhere/pkg/workflow/task/bootstrap"
+	"github.com/aws/eks-anywhere/pkg/workflow/task/cni"
+	"github.com/aws/eks-anywhere/pkg/workflow/task/workload"
 )
 
 // Define tasks names for each task run as part of the create cluster workflow. To aid readability
 // the order of task names should be representative of the order of execution.
 const (
 	CreateBootstrapCluster workflow.TaskName = "CreateBootstrapCluster"
+	CreateWorkloadCluster  workflow.TaskName = "CreateWorkloadCluster"
+	InstallCNI             workflow.TaskName = "InstallCNI"
 	DeleteBootstrapCluster workflow.TaskName = "DeleteBootstrapCluster"
 )
 
@@ -67,6 +71,22 @@ func (c CreateCluster) build() (*workflow.Workflow, error) {
 		Spec:         c.Spec,
 		Options:      c.CreateBootstrapClusterOptions,
 		Bootstrapper: c.Bootstrapper,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	// For option 1, 2 and 3
+	err = wflw.AppendTask(CreateWorkloadCluster, workload.Create{
+		Spec: c.Spec,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	// For option 3
+	err = wflw.AppendTask(InstallCNI, cni.Install{
+		Spec: c.Spec,
 	})
 	if err != nil {
 		return nil, err
