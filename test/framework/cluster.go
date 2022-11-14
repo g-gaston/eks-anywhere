@@ -85,6 +85,7 @@ type ClusterE2ETest struct {
 	AWSIamConfig           *v1alpha1.AWSIamConfig
 	eksaBinaryLocation     string
 	ExpectFailure          bool
+	KubeconfigPath         string
 }
 
 type ClusterE2ETestOpt func(e *ClusterE2ETest)
@@ -769,6 +770,9 @@ func (e *ClusterE2ETest) cluster() *types.Cluster {
 }
 
 func (e *ClusterE2ETest) kubeconfigFilePath() string {
+	if e.KubeconfigPath != "" {
+		return e.KubeconfigPath
+	}
 	return filepath.Join(e.ClusterName, fmt.Sprintf("%s-eks-a-cluster.kubeconfig", e.ClusterName))
 }
 

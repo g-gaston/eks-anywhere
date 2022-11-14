@@ -42,6 +42,13 @@ func runUpgradeFlowWithOIDC(test *framework.ClusterE2ETest, updateVersion v1alph
 	test.DeleteCluster()
 }
 
+func TestValidateOIDCInRunningCluster(t *testing.T) {
+	test := framework.NewClusterE2ETest(t, framework.NewDocker(t))
+	test.KubeconfigPath = "my-kubeconfig"
+	test.ClusterName = "blabla"
+	test.ValidateOIDC()
+}
+
 func TestDockerKubernetes120OIDC(t *testing.T) {
 	test := framework.NewClusterE2ETest(t,
 		framework.NewDocker(t),
