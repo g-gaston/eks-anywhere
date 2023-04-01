@@ -3,7 +3,6 @@ package upgradevalidations
 import (
 	"context"
 	"fmt"
-	"math"
 
 	"k8s.io/apimachinery/pkg/util/version"
 
@@ -12,8 +11,6 @@ import (
 	"github.com/aws/eks-anywhere/pkg/types"
 	"github.com/aws/eks-anywhere/pkg/validations"
 )
-
-const supportedMinorVersionIncrement = 1
 
 func ValidateServerVersionSkew(ctx context.Context, compareVersion v1alpha1.KubernetesVersion, cluster *types.Cluster, kubectl validations.KubectlClient) error {
 	versions, err := kubectl.Version(ctx, cluster)
@@ -32,14 +29,9 @@ func ValidateServerVersionSkew(ctx context.Context, compareVersion v1alpha1.Kube
 	}
 
 	logger.V(3).Info("calculating version differences", "inputVersion", parsedInputVersion, "clusterVersion", parsedServerVersion)
-	majorVersionDifference := math.Abs(float64(parsedInputVersion.Major()) - float64(parsedServerVersion.Major()))
-	minorVersionDifference := float64(parsedInputVersion.Minor()) - float64(parsedServerVersion.Minor())
-	logger.V(3).Info("calculated version differences", "majorVersionDifference", majorVersionDifference, "minorVersionDifference", minorVersionDifference)
 
-	if majorVersionDifference > 0 || !(minorVersionDifference <= supportedMinorVersionIncrement && minorVersionDifference >= 0) {
-		msg := fmt.Sprintf("WARNING: version difference between upgrade version (%d.%d) and server version (%d.%d) do not meet the supported version increment of +%d",
-			parsedInputVersion.Major(), parsedInputVersion.Minor(), parsedServerVersion.Major(), parsedServerVersion.Minor(), supportedMinorVersionIncrement)
-		return fmt.Errorf(msg)
+	if err := v1alpha1.ValidateVersionSkew(parsedServerVersion, parsedInputVersion); err != nil {
+		return err
 	}
 	return nil
 }
