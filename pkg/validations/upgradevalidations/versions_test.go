@@ -1,12 +1,10 @@
 package upgradevalidations_test
 
 import (
-	"bytes"
 	"errors"
 	"reflect"
 	"testing"
 
-	"github.com/aws/eks-anywhere/internal/test"
 	"github.com/aws/eks-anywhere/pkg/api/v1alpha1"
 	"github.com/aws/eks-anywhere/pkg/validations"
 	"github.com/aws/eks-anywhere/pkg/validations/upgradevalidations"
@@ -57,12 +55,13 @@ func TestValidateVersionSkew(t *testing.T) {
 		},
 	}
 
-	k, ctx, cluster, e := validations.NewKubectl(t)
+	k, ctx, cluster := validations.NewKubectl(t)
 	for _, tc := range tests {
 		t.Run(tc.name, func(tt *testing.T) {
-			fileContent := test.ReadFile(t, tc.serverVersionResponse)
-			e.EXPECT().Execute(ctx, []string{"version", "-o", "json", "--kubeconfig", cluster.KubeconfigFile}).Return(*bytes.NewBufferString(fileContent), nil)
-			err := upgradevalidations.ValidateServerVersionSkew(ctx, tc.upgradeVersion, cluster, k)
+			c := &v1alpha1.Cluster{Spec: v1alpha1.ClusterSpec{KubernetesVersion: tc.upgradeVersion}}
+			k.EXPECT().GetEksaCluster(ctx, c, cluster).Return(&v1alpha1.Cluster{}, nil)
+
+			err := upgradevalidations.ValidateServerVersionSkew(ctx, c, cluster, k)
 			if err != nil && !reflect.DeepEqual(err.Error(), tc.wantErr.Error()) {
 				t.Errorf("%v got = %v, \nwant %v", tc.name, err, tc.wantErr)
 			}

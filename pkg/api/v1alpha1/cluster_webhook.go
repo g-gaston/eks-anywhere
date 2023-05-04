@@ -96,7 +96,7 @@ func (r *Cluster) ValidateUpdate(old runtime.Object) error {
 
 	allErrs = append(allErrs, validateBundlesRefCluster(r, oldCluster)...)
 
-	allErrs = append(allErrs, validateServerVersionSkew(r, oldCluster)...)
+	allErrs = append(allErrs, ValidateServerVersionSkew(r, oldCluster)...)
 
 	if len(allErrs) != 0 {
 		return apierrors.NewInvalid(GroupVersion.WithKind(ClusterKind).GroupKind(), r.Name, allErrs)
@@ -347,7 +347,7 @@ func (r *Cluster) ValidateDelete() error {
 	return nil
 }
 
-func validateServerVersionSkew(new, old *Cluster) field.ErrorList {
+func ValidateServerVersionSkew(new, old *Cluster) field.ErrorList {
 	var allErrs field.ErrorList
 
 	if old.IsSelfManaged() {

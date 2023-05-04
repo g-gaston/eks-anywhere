@@ -8,8 +8,9 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 
 	"github.com/aws/eks-anywhere/pkg/api/v1alpha1"
+	"github.com/aws/eks-anywhere/pkg/validations/mocks"
+
 	"github.com/aws/eks-anywhere/pkg/executables"
-	mockexecutables "github.com/aws/eks-anywhere/pkg/executables/mocks"
 	"github.com/aws/eks-anywhere/pkg/types"
 	releasev1alpha1 "github.com/aws/eks-anywhere/release/api/v1alpha1"
 )
@@ -35,7 +36,7 @@ type KubectlClient interface {
 	GetObject(ctx context.Context, resourceType, name, namespace, kubeconfig string, obj runtime.Object) error
 }
 
-func NewKubectl(t *testing.T) (*executables.Kubectl, context.Context, *types.Cluster, *mockexecutables.MockExecutable) {
+func NewKubectl(t *testing.T) (*mocks.MockKubectlClient, context.Context, *types.Cluster) {
 	kubeconfigFile := "c.kubeconfig"
 	cluster := &types.Cluster{
 		KubeconfigFile: kubeconfigFile,
@@ -43,7 +44,6 @@ func NewKubectl(t *testing.T) (*executables.Kubectl, context.Context, *types.Clu
 
 	ctx := context.Background()
 	ctrl := gomock.NewController(t)
-	executable := mockexecutables.NewMockExecutable(ctrl)
 
-	return executables.NewKubectl(executable), ctx, cluster, executable
+	return mocks.NewMockKubectlClient(ctrl), ctx, cluster
 }
