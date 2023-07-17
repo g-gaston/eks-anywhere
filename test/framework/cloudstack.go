@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -90,31 +89,6 @@ type CloudStack struct {
 
 type CloudStackOpt func(*CloudStack)
 
-// UpdateRedhatTemplate123Var updates the CloudStackTemplate for all machines to the one corresponding to K8s 1.23.
-func UpdateRedhatTemplate123Var() api.CloudStackFiller {
-	return api.WithCloudStackStringFromEnvVar(cloudstackTemplateRedhat123Var, api.WithCloudStackTemplateForAllMachines)
-}
-
-// UpdateRedhatTemplate124Var updates the CloudStackTemplate for all machines to the one corresponding to K8s 1.24.
-func UpdateRedhatTemplate124Var() api.CloudStackFiller {
-	return api.WithCloudStackStringFromEnvVar(cloudstackTemplateRedhat124Var, api.WithCloudStackTemplateForAllMachines)
-}
-
-// UpdateRedhatTemplate125Var updates the CloudStackTemplate for all machines to the one corresponding to K8s 1.25.
-func (c *CloudStack) UpdateRedhatTemplate125Var() api.CloudStackFiller {
-	return api.WithCloudStackTemplateForAllMachines(c.templateForDevRelease(anywherev1.RedHat, anywherev1.Kube125))
-}
-
-// UpdateRedhatTemplate126Var updates the CloudStackTemplate for all machines to the one corresponding to K8s 1.26.
-func (c *CloudStack) UpdateRedhatTemplate126Var() api.CloudStackFiller {
-	return api.WithCloudStackTemplateForAllMachines(c.templateForDevRelease(anywherev1.RedHat, anywherev1.Kube126))
-}
-
-// UpdateRedhatTemplate127Var updates the CloudStackTemplate for all machines to the one corresponding to K8s 1.27.
-func (c *CloudStack) UpdateRedhatTemplate127Var() api.CloudStackFiller {
-	return api.WithCloudStackTemplateForAllMachines(c.templateForDevRelease(anywherev1.RedHat, anywherev1.Kube127))
-}
-
 func UpdateLargerCloudStackComputeOffering() api.CloudStackFiller {
 	return api.WithCloudStackStringFromEnvVar(cloudstackComputeOfferingLargerVar, api.WithCloudStackComputeOfferingForAllMachines)
 }
@@ -177,49 +151,40 @@ func WithCloudStackWorkerNodeGroup(name string, workerNodeGroup *WorkerNodeGroup
 	}
 }
 
-// WithCloudStackRedhat123 returns a function which can be invoked to configure the Cloudstack object to be compatible with K8s 1.23.
-func WithCloudStackRedhat123() CloudStackOpt {
+// WithKubeVersionAndOS returns a CloudStack Opt that adds API fillers to use a CloudStack template for
+// the specified OS family and version (default if not provided), corresponding to a particular
+// Kubernetes version, in addition to configuring all machine configs to use this OS family.
+func withCloudStackKubeVersionAndOS(osFamily anywherev1.OSFamily, kubeVersion anywherev1.KubernetesVersion, osVersion ...string) CloudStackOpt {
 	return func(c *CloudStack) {
 		c.fillers = append(c.fillers,
-			api.WithCloudStackTemplateForAllMachines(c.templateForDevRelease(anywherev1.RedHat, anywherev1.Kube123)),
+			c.templateForKubeVersionAndOS(osFamily, kubeVersion, osVersion...),
 		)
 	}
+}
+
+// WithCloudStackRedhat123 returns a function which can be invoked to configure the Cloudstack object to be compatible with K8s 1.23.
+func WithCloudStackRedhat123(osVersion ...string) CloudStackOpt {
+	return withCloudStackKubeVersionAndOS(anywherev1.RedHat, anywherev1.Kube123, osVersion...)
 }
 
 // WithCloudStackRedhat124 returns a function which can be invoked to configure the Cloudstack object to be compatible with K8s 1.24.
-func WithCloudStackRedhat124() CloudStackOpt {
-	return func(c *CloudStack) {
-		c.fillers = append(c.fillers,
-			api.WithCloudStackTemplateForAllMachines(c.templateForDevRelease(anywherev1.RedHat, anywherev1.Kube124)),
-		)
-	}
+func WithCloudStackRedhat124(osVersion ...string) CloudStackOpt {
+	return withCloudStackKubeVersionAndOS(anywherev1.RedHat, anywherev1.Kube124, osVersion...)
 }
 
 // WithCloudStackRedhat125 returns a function which can be invoked to configure the Cloudstack object to be compatible with K8s 1.25.
-func WithCloudStackRedhat125() CloudStackOpt {
-	return func(c *CloudStack) {
-		c.fillers = append(c.fillers,
-			api.WithCloudStackTemplateForAllMachines(c.templateForDevRelease(anywherev1.RedHat, anywherev1.Kube125)),
-		)
-	}
+func WithCloudStackRedhat125(osVersion ...string) CloudStackOpt {
+	return withCloudStackKubeVersionAndOS(anywherev1.RedHat, anywherev1.Kube125, osVersion...)
 }
 
 // WithCloudStackRedhat126 returns a function which can be invoked to configure the Cloudstack object to be compatible with K8s 1.26.
-func WithCloudStackRedhat126() CloudStackOpt {
-	return func(c *CloudStack) {
-		c.fillers = append(c.fillers,
-			api.WithCloudStackTemplateForAllMachines(c.templateForDevRelease(anywherev1.RedHat, anywherev1.Kube126)),
-		)
-	}
+func WithCloudStackRedhat126(osVersion ...string) CloudStackOpt {
+	return withCloudStackKubeVersionAndOS(anywherev1.RedHat, anywherev1.Kube126, osVersion...)
 }
 
 // WithCloudStackRedhat127 returns a function which can be invoked to configure the Cloudstack object to be compatible with K8s 1.27.
-func WithCloudStackRedhat127() CloudStackOpt {
-	return func(c *CloudStack) {
-		c.fillers = append(c.fillers,
-			api.WithCloudStackTemplateForAllMachines(c.templateForDevRelease(anywherev1.RedHat, anywherev1.Kube127)),
-		)
-	}
+func WithCloudStackRedhat127(osVersion ...string) CloudStackOpt {
+	return withCloudStackKubeVersionAndOS(anywherev1.RedHat, anywherev1.Kube127, osVersion...)
 }
 
 func WithCloudStackFillers(fillers ...api.CloudStackFiller) CloudStackOpt {
@@ -330,14 +295,34 @@ func cloudStackMachineConfig(name string, fillers ...api.CloudStackMachineConfig
 	return api.WithCloudStackMachineConfig(name, f...)
 }
 
-// Redhat123Template returns cloudstack filler for 1.23 Ubuntu.
-func (c *CloudStack) Redhat123Template() api.CloudStackFiller {
-	return api.WithCloudStackStringFromEnvVar(cloudstackTemplateRedhat123Var, api.WithCloudStackTemplateForAllMachines)
+// templateForKubeVersionAndOS returns a CloudStack filler for the given OS and Kubernetes version.
+func (c *CloudStack) templateForKubeVersionAndOS(osFamily anywherev1.OSFamily, kubeVersion anywherev1.KubernetesVersion, osVersion ...string) api.CloudStackFiller {
+	return api.WithCloudStackTemplateForAllMachines(c.templateForDevRelease(osFamily, kubeVersion, osVersion...))
 }
 
-// Redhat124Template returns cloudstack filler for 1.24 Ubuntu.
-func (c *CloudStack) Redhat124Template() api.CloudStackFiller {
-	return api.WithCloudStackStringFromEnvVar(cloudstackTemplateRedhat124Var, api.WithCloudStackTemplateForAllMachines)
+// Redhat123Template returns cloudstack filler for 1.23 RedHat.
+func (c *CloudStack) Redhat123Template(osVersion ...string) api.CloudStackFiller {
+	return c.templateForKubeVersionAndOS(anywherev1.RedHat, anywherev1.Kube123, osVersion...)
+}
+
+// Redhat124Template returns cloudstack filler for 1.24 RedHat.
+func (c *CloudStack) Redhat124Template(osVersion ...string) api.CloudStackFiller {
+	return c.templateForKubeVersionAndOS(anywherev1.RedHat, anywherev1.Kube124, osVersion...)
+}
+
+// Redhat125Template returns cloudstack filler for 1.25 RedHat.
+func (c *CloudStack) Redhat125Template(osVersion ...string) api.CloudStackFiller {
+	return c.templateForKubeVersionAndOS(anywherev1.RedHat, anywherev1.Kube125, osVersion...)
+}
+
+// Redhat126Template returns cloudstack filler for 1.26 RedHat.
+func (c *CloudStack) Redhat126Template(osVersion ...string) api.CloudStackFiller {
+	return c.templateForKubeVersionAndOS(anywherev1.RedHat, anywherev1.Kube126, osVersion...)
+}
+
+// Redhat127Template returns cloudstack filler for 1.27 RedHat.
+func (c *CloudStack) Redhat127Template(osVersion ...string) api.CloudStackFiller {
+	return c.templateForKubeVersionAndOS(anywherev1.RedHat, anywherev1.Kube127, osVersion...)
 }
 
 func buildCloudStackWorkerNodeGroupClusterFiller(machineConfigName string, workerNodeGroup *WorkerNodeGroup) api.ClusterFiller {
@@ -357,59 +342,45 @@ func (c *CloudStack) ClusterStateValidations() []clusterf.StateValidation {
 	}
 }
 
-// WithRedhat123 returns a cluster config filler that sets the kubernetes version of the cluster to 1.23
-// as well as the right redhat template for all CloudStackMachineConfigs.
-func (c *CloudStack) WithRedhat123() api.ClusterConfigFiller {
+// WithKubeVersionAndOS returns a cluster config filler that sets the cluster kube version and the right template for all
+// cloudstack machine configs.
+func (c *CloudStack) WithKubeVersionAndOS(osFamily anywherev1.OSFamily, kubeVersion anywherev1.KubernetesVersion, osVersion ...string) api.ClusterConfigFiller {
 	return api.JoinClusterConfigFillers(
-		api.ClusterToConfigFiller(api.WithKubernetesVersion(anywherev1.Kube123)),
+		api.ClusterToConfigFiller(api.WithKubernetesVersion(kubeVersion)),
 		api.CloudStackToConfigFiller(
-			UpdateRedhatTemplate123Var(),
+			c.templateForKubeVersionAndOS(osFamily, kubeVersion, osVersion...),
 		),
 	)
+}
+
+// WithRedhat123 returns a cluster config filler that sets the kubernetes version of the cluster to 1.23
+// as well as the right redhat template for all CloudStackMachineConfigs.
+func (c *CloudStack) WithRedhat123(osVersion ...string) api.ClusterConfigFiller {
+	return c.WithKubeVersionAndOS(anywherev1.RedHat, anywherev1.Kube123, osVersion...)
 }
 
 // WithRedhat124 returns a cluster config filler that sets the kubernetes version of the cluster to 1.24
 // as well as the right redhat template for all CloudStackMachineConfigs.
-func (c *CloudStack) WithRedhat124() api.ClusterConfigFiller {
-	return api.JoinClusterConfigFillers(
-		api.ClusterToConfigFiller(api.WithKubernetesVersion(anywherev1.Kube124)),
-		api.CloudStackToConfigFiller(
-			UpdateRedhatTemplate124Var(),
-		),
-	)
+func (c *CloudStack) WithRedhat124(osVersion ...string) api.ClusterConfigFiller {
+	return c.WithKubeVersionAndOS(anywherev1.RedHat, anywherev1.Kube124, osVersion...)
 }
 
 // WithRedhat125 returns a cluster config filler that sets the kubernetes version of the cluster to 1.25
 // as well as the right redhat template for all CloudStackMachineConfigs.
-func (c *CloudStack) WithRedhat125() api.ClusterConfigFiller {
-	return api.JoinClusterConfigFillers(
-		api.ClusterToConfigFiller(api.WithKubernetesVersion(anywherev1.Kube125)),
-		api.CloudStackToConfigFiller(
-			c.UpdateRedhatTemplate125Var(),
-		),
-	)
+func (c *CloudStack) WithRedhat125(osVersion ...string) api.ClusterConfigFiller {
+	return c.WithKubeVersionAndOS(anywherev1.RedHat, anywherev1.Kube125, osVersion...)
 }
 
 // WithRedhat126 returns a cluster config filler that sets the kubernetes version of the cluster to 1.26
 // as well as the right redhat template for all CloudStackMachineConfigs.
-func (c *CloudStack) WithRedhat126() api.ClusterConfigFiller {
-	return api.JoinClusterConfigFillers(
-		api.ClusterToConfigFiller(api.WithKubernetesVersion(anywherev1.Kube126)),
-		api.CloudStackToConfigFiller(
-			c.UpdateRedhatTemplate126Var(),
-		),
-	)
+func (c *CloudStack) WithRedhat126(osVersion ...string) api.ClusterConfigFiller {
+	return c.WithKubeVersionAndOS(anywherev1.RedHat, anywherev1.Kube126, osVersion...)
 }
 
 // WithRedhat127 returns a cluster config filler that sets the kubernetes version of the cluster to 1.27
 // as well as the right redhat template for all CloudStackMachineConfigs.
-func (c *CloudStack) WithRedhat127() api.ClusterConfigFiller {
-	return api.JoinClusterConfigFillers(
-		api.ClusterToConfigFiller(api.WithKubernetesVersion(anywherev1.Kube127)),
-		api.CloudStackToConfigFiller(
-			c.UpdateRedhatTemplate126Var(),
-		),
-	)
+func (c *CloudStack) WithRedhat127(osVersion ...string) api.ClusterConfigFiller {
+	return c.WithKubeVersionAndOS(anywherev1.RedHat, anywherev1.Kube127, osVersion...)
 }
 
 // WithRedhatVersion returns a cluster config filler that sets the kubernetes version of the cluster to the k8s
@@ -444,27 +415,45 @@ func (c *CloudStack) getDevRelease() *releasev1.EksARelease {
 	return c.devRelease
 }
 
-func (c *CloudStack) templateForDevRelease(osFamily anywherev1.OSFamily, kubeVersion anywherev1.KubernetesVersion) string {
+func (c *CloudStack) templateForDevRelease(osFamily anywherev1.OSFamily, kubeVersion anywherev1.KubernetesVersion, osVersion ...string) string {
 	c.t.Helper()
-	return c.templatesRegistry.templateForRelease(c.t, osFamily, c.getDevRelease(), kubeVersion)
+	return c.templatesRegistry.templateForRelease(c.t, osFamily, c.getDevRelease(), kubeVersion, osVersion...)
 }
 
 // envVarForTemplate Looks for explicit configuration through an env var: "T_CLOUDSTACK_TEMPLATE_{osFamily}_{eks-d version}"
 // eg: T_CLOUDSTACK_TEMPLATE_REDHAT_KUBERNETES_1_23_EKS_22.
-func (c *CloudStack) envVarForTemplate(osFamily, eksDName string) string {
-	return fmt.Sprintf("T_CLOUDSTACK_TEMPLATE_%s_%s", strings.ToUpper(osFamily), strings.ToUpper(strings.ReplaceAll(eksDName, "-", "_")))
+func (c *CloudStack) envVarForTemplate(osFamily, osVersion, eksDName string) string {
+	// Use the old template env var naming scheme for backwards compatibility.
+	templateEnvVar := fmt.Sprintf("T_CLOUDSTACK_TEMPLATE_%s_%s", strings.ToUpper(osFamily), strings.ToUpper(strings.ReplaceAll(eksDName, "-", "_")))
+	// If the OS version provided is not the default one, include it in the template env var name.
+	if osVersion != defaultOSVersions[osFamily] {
+		templateEnvVar = fmt.Sprintf("T_CLOUDSTACK_TEMPLATE_%s_%s_%s", strings.ToUpper(osFamily), osVersion, strings.ToUpper(strings.ReplaceAll(eksDName, "-", "_")))
+	}
+	return templateEnvVar
 }
 
 // defaultNameForTemplate looks for a template: "{eks-d version}-{osFamily}"
 // eg: kubernetes-1-23-eks-22-redhat.
-func (c *CloudStack) defaultNameForTemplate(osFamily, eksDName string) string {
-	return filepath.Join(fmt.Sprintf("%s-%s", strings.ToLower(eksDName), strings.ToLower(osFamily)))
+func (c *CloudStack) defaultNameForTemplate(osFamily, osVersion, eksDName string) string {
+	// Use the old template naming scheme for backwards compatibility.
+	defaultTemplateName := fmt.Sprintf("%s-%s", strings.ToLower(eksDName), strings.ToLower(osFamily))
+	// If the OS version provided is not the default one, include it in the env var name.
+	if osVersion != defaultOSVersions[osFamily] {
+		defaultTemplateName = fmt.Sprintf("%s-%s-%s", strings.ToLower(eksDName), strings.ToLower(osFamily), osVersion)
+	}
+	return defaultTemplateName
 }
 
 // defaultEnvVarForTemplate returns the value of the default template env vars: "T_CLOUDSTACK_TEMPLATE_{osFamily}_{kubeVersion}"
 // eg. T_CLOUDSTACK_TEMPLATE_REDHAT_1_23.
-func (c *CloudStack) defaultEnvVarForTemplate(osFamily string, kubeVersion anywherev1.KubernetesVersion) string {
-	return fmt.Sprintf("T_CLOUDSTACK_TEMPLATE_%s_%s", strings.ToUpper(osFamily), strings.ReplaceAll(string(kubeVersion), ".", "_"))
+func (c *CloudStack) defaultEnvVarForTemplate(osFamily, osVersion string, kubeVersion anywherev1.KubernetesVersion) string {
+	// Use the old template env var naming scheme for backwards compatibility.
+	defaultTemplateEnvVar := fmt.Sprintf("T_CLOUDSTACK_TEMPLATE_%s_%s", strings.ToUpper(osFamily), strings.ReplaceAll(string(kubeVersion), ".", "_"))
+	// If the OS version provided is not the default one, include it in the template env var name.
+	if osVersion != defaultOSVersions[osFamily] {
+		defaultTemplateEnvVar = fmt.Sprintf("T_CLOUDSTACK_TEMPLATE_%s_%s_%s", strings.ToUpper(osFamily), osVersion, strings.ReplaceAll(string(kubeVersion), ".", "_"))
+	}
+	return defaultTemplateEnvVar
 }
 
 // searchTemplate returns template name if the given template exists in the datacenter.
@@ -481,15 +470,4 @@ func (c *CloudStack) searchTemplate(ctx context.Context, template string) (strin
 		return "", err
 	}
 	return template, nil
-}
-
-// WithKubeVersionAndOS returns a cluster config filler that sets the cluster kube version and the right template for all
-// cloudstack machine configs.
-func (c *CloudStack) WithKubeVersionAndOS(osFamily anywherev1.OSFamily, kubeVersion anywherev1.KubernetesVersion) api.ClusterConfigFiller {
-	return api.JoinClusterConfigFillers(
-		api.ClusterToConfigFiller(api.WithKubernetesVersion(kubeVersion)),
-		api.CloudStackToConfigFiller(
-			api.WithCloudStackTemplateForAllMachines(c.templateForDevRelease(osFamily, kubeVersion)),
-		),
-	)
 }

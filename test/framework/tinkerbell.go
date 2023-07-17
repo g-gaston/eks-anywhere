@@ -1,7 +1,9 @@
 package framework
 
 import (
+	"fmt"
 	"os"
+	"strings"
 	"testing"
 
 	"github.com/aws/eks-anywhere/internal/pkg/api"
@@ -57,30 +59,6 @@ type Tinkerbell struct {
 	serverIP             string
 	cidr                 string
 	inventoryCsvFilePath string
-}
-
-func UpdateTinkerbellUbuntuTemplate123Var() api.TinkerbellFiller {
-	return api.WithStringFromEnvVarTinkerbell(tinkerbellImageUbuntu123EnvVar, api.WithTinkerbellOSImageURL)
-}
-
-// UpdateTinkerbellUbuntuTemplate124Var updates the tinkerbell template.
-func UpdateTinkerbellUbuntuTemplate124Var() api.TinkerbellFiller {
-	return api.WithStringFromEnvVarTinkerbell(tinkerbellImageUbuntu124EnvVar, api.WithTinkerbellOSImageURL)
-}
-
-// UpdateTinkerbellUbuntuTemplate125Var updates the tinkerbell template.
-func UpdateTinkerbellUbuntuTemplate125Var() api.TinkerbellFiller {
-	return api.WithStringFromEnvVarTinkerbell(tinkerbellImageUbuntu125EnvVar, api.WithTinkerbellOSImageURL)
-}
-
-// UpdateTinkerbellUbuntuTemplate126Var updates the tinkerbell template.
-func UpdateTinkerbellUbuntuTemplate126Var() api.TinkerbellFiller {
-	return api.WithStringFromEnvVarTinkerbell(tinkerbellImageUbuntu126EnvVar, api.WithTinkerbellOSImageURL)
-}
-
-// UpdateTinkerbellUbuntuTemplate127Var updates the tinkerbell template.
-func UpdateTinkerbellUbuntuTemplate127Var() api.TinkerbellFiller {
-	return api.WithStringFromEnvVarTinkerbell(tinkerbellImageUbuntu127EnvVar, api.WithTinkerbellOSImageURL)
 }
 
 // UpdateTinkerbellMachineSSHAuthorizedKey updates a tinkerbell machine configs SSHAuthorizedKey.
@@ -153,9 +131,9 @@ func (t *Tinkerbell) CleanupVMs(_ string) error {
 	return nil
 }
 
-// WithKubeVersionAndOS returns a cluster config filler that sets the cluster kube version and the right template for all
+// WithKubeVersionAndOS returns a cluster config filler that sets the cluster kube version and the right image for all
 // tinkerbell machine configs.
-func (t *Tinkerbell) WithKubeVersionAndOS(osFamily anywherev1.OSFamily, kubeVersion anywherev1.KubernetesVersion) api.ClusterConfigFiller {
+func (t *Tinkerbell) WithKubeVersionAndOS(osFamily anywherev1.OSFamily, kubeVersion anywherev1.KubernetesVersion, osVersion ...string) api.ClusterConfigFiller {
 	// TODO: Update tests to use this
 	panic("Not implemented for Tinkerbell yet")
 }
@@ -167,103 +145,78 @@ func (t *Tinkerbell) WithNewWorkerNodeGroup(name string, workerNodeGroup *Worker
 	panic("Not implemented for Tinkerbell yet")
 }
 
-func WithUbuntu123Tinkerbell() TinkerbellOpt {
+func envVarForImage(osFamily anywherev1.OSFamily, kubeVersion anywherev1.KubernetesVersion, osVersion ...string) string {
+	osFamilyStr := string(osFamily)
+	osVersionStr := defaultOSVersions[osFamilyStr]
+	if len(osVersion) > 0 {
+		osVersionStr = osVersion[0]
+	}
+	imageEnvVar := fmt.Sprintf("T_TINKERBELL_IMAGE_%s_%s", strings.ToUpper(osFamilyStr), strings.ReplaceAll(string(kubeVersion), ".", "_"))
+	if osVersionStr != defaultOSVersions[osFamilyStr] {
+		imageEnvVar = fmt.Sprintf("T_TINKERBELL_IMAGE_%s_%s_%s", strings.ToUpper(osFamilyStr), osVersionStr, strings.ReplaceAll(string(kubeVersion), ".", "_"))
+	}
+	return imageEnvVar
+}
+
+// withKubeVersionAndOS returns a cluster config filler that sets the cluster kube version and the right image for all
+// tinkerbell machine configs.
+func withKubeVersionAndOS(osFamily anywherev1.OSFamily, kubeVersion anywherev1.KubernetesVersion, osVersion ...string) TinkerbellOpt {
 	return func(t *Tinkerbell) {
 		t.fillers = append(t.fillers,
-			api.WithStringFromEnvVarTinkerbell(tinkerbellImageUbuntu123EnvVar, api.WithTinkerbellOSImageURL),
-			api.WithOsFamilyForAllTinkerbellMachines(anywherev1.Ubuntu),
+			imageForKubeVersionAndOS(osFamily, kubeVersion, osVersion...),
+			api.WithOsFamilyForAllTinkerbellMachines(osFamily),
 		)
 	}
+}
+
+// WithUbuntu123Tinkerbell tink test with ubuntu 1.23.
+func WithUbuntu123Tinkerbell(osVersion ...string) TinkerbellOpt {
+	return withKubeVersionAndOS(anywherev1.Ubuntu, anywherev1.Kube123, osVersion...)
 }
 
 // WithUbuntu124Tinkerbell tink test with ubuntu 1.24.
-func WithUbuntu124Tinkerbell() TinkerbellOpt {
-	return func(t *Tinkerbell) {
-		t.fillers = append(t.fillers,
-			api.WithStringFromEnvVarTinkerbell(tinkerbellImageUbuntu124EnvVar, api.WithTinkerbellOSImageURL),
-			api.WithOsFamilyForAllTinkerbellMachines(anywherev1.Ubuntu),
-		)
-	}
+func WithUbuntu124Tinkerbell(osVersion ...string) TinkerbellOpt {
+	return withKubeVersionAndOS(anywherev1.Ubuntu, anywherev1.Kube124, osVersion...)
 }
 
 // WithUbuntu125Tinkerbell tink test with ubuntu 1.25.
-func WithUbuntu125Tinkerbell() TinkerbellOpt {
-	return func(t *Tinkerbell) {
-		t.fillers = append(t.fillers,
-			api.WithStringFromEnvVarTinkerbell(tinkerbellImageUbuntu125EnvVar, api.WithTinkerbellOSImageURL),
-			api.WithOsFamilyForAllTinkerbellMachines(anywherev1.Ubuntu),
-		)
-	}
+func WithUbuntu125Tinkerbell(osVersion ...string) TinkerbellOpt {
+	return withKubeVersionAndOS(anywherev1.Ubuntu, anywherev1.Kube125, osVersion...)
 }
 
 // WithUbuntu126Tinkerbell tink test with ubuntu 1.26.
-func WithUbuntu126Tinkerbell() TinkerbellOpt {
-	return func(t *Tinkerbell) {
-		t.fillers = append(t.fillers,
-			api.WithStringFromEnvVarTinkerbell(tinkerbellImageUbuntu126EnvVar, api.WithTinkerbellOSImageURL),
-			api.WithOsFamilyForAllTinkerbellMachines(anywherev1.Ubuntu),
-		)
-	}
+func WithUbuntu126Tinkerbell(osVersion ...string) TinkerbellOpt {
+	return withKubeVersionAndOS(anywherev1.Ubuntu, anywherev1.Kube126, osVersion...)
 }
 
 // WithUbuntu127Tinkerbell tink test with ubuntu 1.27.
-func WithUbuntu127Tinkerbell() TinkerbellOpt {
-	return func(t *Tinkerbell) {
-		t.fillers = append(t.fillers,
-			api.WithStringFromEnvVarTinkerbell(tinkerbellImageUbuntu127EnvVar, api.WithTinkerbellOSImageURL),
-			api.WithOsFamilyForAllTinkerbellMachines(anywherev1.Ubuntu),
-		)
-	}
+func WithUbuntu127Tinkerbell(osVersion ...string) TinkerbellOpt {
+	return withKubeVersionAndOS(anywherev1.Ubuntu, anywherev1.Kube127, osVersion...)
 }
 
 // WithRedHat123Tinkerbell tink test with redhat 1.23.
-func WithRedHat123Tinkerbell() TinkerbellOpt {
-	return func(t *Tinkerbell) {
-		t.fillers = append(t.fillers,
-			api.WithStringFromEnvVarTinkerbell(tinkerbellImageRedHat123EnvVar, api.WithTinkerbellOSImageURL),
-			api.WithOsFamilyForAllTinkerbellMachines(anywherev1.RedHat),
-		)
-	}
+func WithRedHat123Tinkerbell(osVersion ...string) TinkerbellOpt {
+	return withKubeVersionAndOS(anywherev1.RedHat, anywherev1.Kube123, osVersion...)
 }
 
 // WithRedHat124Tinkerbell tink test with redhat 1.24.
-func WithRedHat124Tinkerbell() TinkerbellOpt {
-	return func(t *Tinkerbell) {
-		t.fillers = append(t.fillers,
-			api.WithStringFromEnvVarTinkerbell(tinkerbellImageRedHat124EnvVar, api.WithTinkerbellOSImageURL),
-			api.WithOsFamilyForAllTinkerbellMachines(anywherev1.RedHat),
-		)
-	}
+func WithRedHat124Tinkerbell(osVersion ...string) TinkerbellOpt {
+	return withKubeVersionAndOS(anywherev1.RedHat, anywherev1.Kube124, osVersion...)
 }
 
 // WithRedHat125Tinkerbell tink test with redhat 1.25.
-func WithRedHat125Tinkerbell() TinkerbellOpt {
-	return func(t *Tinkerbell) {
-		t.fillers = append(t.fillers,
-			api.WithStringFromEnvVarTinkerbell(tinkerbellImageRedHat125EnvVar, api.WithTinkerbellOSImageURL),
-			api.WithOsFamilyForAllTinkerbellMachines(anywherev1.RedHat),
-		)
-	}
+func WithRedHat125Tinkerbell(osVersion ...string) TinkerbellOpt {
+	return withKubeVersionAndOS(anywherev1.RedHat, anywherev1.Kube125, osVersion...)
 }
 
 // WithRedHat126Tinkerbell tink test with redhat 1.26.
-func WithRedHat126Tinkerbell() TinkerbellOpt {
-	return func(t *Tinkerbell) {
-		t.fillers = append(t.fillers,
-			api.WithStringFromEnvVarTinkerbell(tinkerbellImageRedHat126EnvVar, api.WithTinkerbellOSImageURL),
-			api.WithOsFamilyForAllTinkerbellMachines(anywherev1.RedHat),
-		)
-	}
+func WithRedHat126Tinkerbell(osVersion ...string) TinkerbellOpt {
+	return withKubeVersionAndOS(anywherev1.RedHat, anywherev1.Kube126, osVersion...)
 }
 
 // WithRedHat127Tinkerbell tink test with redhat 1.27.
-func WithRedHat127Tinkerbell() TinkerbellOpt {
-	return func(t *Tinkerbell) {
-		t.fillers = append(t.fillers,
-			api.WithStringFromEnvVarTinkerbell(tinkerbellImageRedHat127EnvVar, api.WithTinkerbellOSImageURL),
-			api.WithOsFamilyForAllTinkerbellMachines(anywherev1.RedHat),
-		)
-	}
+func WithRedHat127Tinkerbell(osVersion ...string) TinkerbellOpt {
+	return withKubeVersionAndOS(anywherev1.RedHat, anywherev1.Kube127, osVersion...)
 }
 
 func WithBottleRocketTinkerbell() TinkerbellOpt {
@@ -308,4 +261,33 @@ func WithHookImagesURLPath(url string) TinkerbellOpt {
 			api.WithHookImagesURLPath(url),
 		)
 	}
+}
+
+func imageForKubeVersionAndOS(osFamily anywherev1.OSFamily, kubeVersion anywherev1.KubernetesVersion, osVersion ...string) api.TinkerbellFiller {
+	return api.WithTinkerbellOSImageURL(envVarForImage(osFamily, kubeVersion, osVersion...))
+}
+
+// Ubuntu123Image represents an Ubuntu raw image corresponding to Kubernetes 1.23.
+func Ubuntu123Image(osVersion ...string) api.TinkerbellFiller {
+	return imageForKubeVersionAndOS(anywherev1.Ubuntu, anywherev1.Kube123, osVersion...)
+}
+
+// Ubuntu124Image represents an Ubuntu raw image corresponding to Kubernetes 1.24.
+func Ubuntu124Image(osVersion ...string) api.TinkerbellFiller {
+	return imageForKubeVersionAndOS(anywherev1.Ubuntu, anywherev1.Kube124, osVersion...)
+}
+
+// Ubuntu125Image represents an Ubuntu raw image corresponding to Kubernetes 1.25.
+func Ubuntu125Image(osVersion ...string) api.TinkerbellFiller {
+	return imageForKubeVersionAndOS(anywherev1.Ubuntu, anywherev1.Kube125, osVersion...)
+}
+
+// Ubuntu126Image represents an Ubuntu raw image corresponding to Kubernetes 1.26.
+func Ubuntu126Image(osVersion ...string) api.TinkerbellFiller {
+	return imageForKubeVersionAndOS(anywherev1.Ubuntu, anywherev1.Kube126, osVersion...)
+}
+
+// Ubuntu127Image represents an Ubuntu raw image corresponding to Kubernetes 1.27.
+func Ubuntu127Image(osVersion ...string) api.TinkerbellFiller {
+	return imageForKubeVersionAndOS(anywherev1.Ubuntu, anywherev1.Kube127, osVersion...)
 }

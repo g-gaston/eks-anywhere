@@ -1,12 +1,12 @@
 # E2E tests
 
 ## How to run tests
-```sh
+```bash
 make build-all-test-binaries
 ./bin/e2e.test -test.v -test.run [test name regex]
 ```
 or
-```sh
+```bash
 # Create a .env file at the root of the repo with all the required envs vars listed below
 #
 # The makefile will include the .env file and export all the vars to the environment for you
@@ -16,9 +16,27 @@ or
 make local-e2e
 ```
 or
-```sh
+```bash
 go test -tags "e2e all_providers" -run [test name regex]
 ```
+
+### Configuring OS version for the tests
+
+In each provider-specific file in the [E2E framework folder](../framework), there are helper methods of the form `With<OS family><KubeVersion>()`, for example, `WithUbuntu127()`, which instructs the tests to use an Ubuntu template/image corresponding to Kubernetes 1.27, depending on the provider. These methods take an OS version as an optional function parameter to construct the template/image name or environment variable. If the OS family you are writing tests for has multiple versions, for example, Ubuntu 20.04 and Ubuntu 22.04, and you do not provide an OS version is provided when writing the test, the [default version](../framework/os_versions.go) defined for the OS will be used to configure the template/image. If an OS version is provided, that will be used instead.
+
+For example, here is how you would write vSphere Kubernetes 1.27 simple flow test that uses an Ubuntu 22.04 template.
+```Go
+func TestVSphereKubernetes127Ubuntu2204SimpleFlow(t *testing.T) {
+	test := framework.NewClusterE2ETest(
+		t,
+		framework.NewVSphere(t, framework.WithUbuntu127(framework.Ubuntu2204Version)),
+		framework.WithClusterFiller(api.WithKubernetesVersion(v1alpha1.Kube127)),
+	)
+	runSimpleFlow(test)
+}
+```
+
+Currently, Ubuntu is the only OS that we build and test multiple versions for. In the future, when we introduce multiple version support for another OS, you can define it in the [OS versions file](../framework/os_versions.go) and use it in the tests like above.
 
 ### Using bundle overrides
 In order to use bundle overrides, take your bundle overrides yaml file and move it to `ROOT_DIR/bin/local-bundle-release.yaml`.
@@ -222,7 +240,7 @@ T_REGISTRY_MIRROR_PASSWORD
 ## Adding new tests
 When adding new tests to run in our postsubmit environment we need to bump up the total number of EC2s we create for the tests.
 
-The value is controlled by the `INTEGRATION_TEST_MAX_EC2_COUNT` env variable in the [test-eks-a-cli.yaml](https://github.com/aws/eks-anywhere/blob/main/cmd/integration_test/build/buildspecs/test-eks-a-cli.yml) buildspec.
+The value is controlled by the `INTEGRATION_TEST_MAX_EC2_COUNT` env variable in each provider's buildspec in the [integration test buildspecs folder](https://github.com/aws/eks-anywhere/blob/main/cmd/integration_test/build/buildspecs).
 
 ```
 env:

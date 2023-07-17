@@ -1648,7 +1648,7 @@ func TestVSphereKubernetes127BottlerocketLinkedClone(t *testing.T) {
 }
 
 // Simpleflow
-func TestVSphereKubernetes123SimpleFlow(t *testing.T) {
+func TestVSphereKubernetes123Ubuntu2004SimpleFlow(t *testing.T) {
 	test := framework.NewClusterE2ETest(
 		t,
 		framework.NewVSphere(t, framework.WithUbuntu123()),
@@ -1657,7 +1657,7 @@ func TestVSphereKubernetes123SimpleFlow(t *testing.T) {
 	runSimpleFlow(test)
 }
 
-func TestVSphereKubernetes124SimpleFlow(t *testing.T) {
+func TestVSphereKubernetes124Ubuntu2004SimpleFlow(t *testing.T) {
 	test := framework.NewClusterE2ETest(
 		t,
 		framework.NewVSphere(t, framework.WithUbuntu124()),
@@ -1666,7 +1666,7 @@ func TestVSphereKubernetes124SimpleFlow(t *testing.T) {
 	runSimpleFlow(test)
 }
 
-func TestVSphereKubernetes125SimpleFlow(t *testing.T) {
+func TestVSphereKubernetes125Ubuntu2004SimpleFlow(t *testing.T) {
 	test := framework.NewClusterE2ETest(
 		t,
 		framework.NewVSphere(t, framework.WithUbuntu125()),
@@ -1675,7 +1675,7 @@ func TestVSphereKubernetes125SimpleFlow(t *testing.T) {
 	runSimpleFlow(test)
 }
 
-func TestVSphereKubernetes126SimpleFlow(t *testing.T) {
+func TestVSphereKubernetes126Ubuntu2004SimpleFlow(t *testing.T) {
 	test := framework.NewClusterE2ETest(
 		t,
 		framework.NewVSphere(t, framework.WithUbuntu126()),
@@ -1684,10 +1684,55 @@ func TestVSphereKubernetes126SimpleFlow(t *testing.T) {
 	runSimpleFlow(test)
 }
 
-func TestVSphereKubernetes127SimpleFlow(t *testing.T) {
+func TestVSphereKubernetes127Ubuntu2004SimpleFlow(t *testing.T) {
 	test := framework.NewClusterE2ETest(
 		t,
 		framework.NewVSphere(t, framework.WithUbuntu127()),
+		framework.WithClusterFiller(api.WithKubernetesVersion(v1alpha1.Kube127)),
+	)
+	runSimpleFlow(test)
+}
+
+func TestVSphereKubernetes123Ubuntu2204SimpleFlow(t *testing.T) {
+	test := framework.NewClusterE2ETest(
+		t,
+		framework.NewVSphere(t, framework.WithUbuntu123(framework.Ubuntu2204Version)),
+		framework.WithClusterFiller(api.WithKubernetesVersion(v1alpha1.Kube123)),
+	)
+	runSimpleFlow(test)
+}
+
+func TestVSphereKubernetes124Ubuntu2204SimpleFlow(t *testing.T) {
+	test := framework.NewClusterE2ETest(
+		t,
+		framework.NewVSphere(t, framework.WithUbuntu124(framework.Ubuntu2204Version)),
+		framework.WithClusterFiller(api.WithKubernetesVersion(v1alpha1.Kube124)),
+	)
+	runSimpleFlow(test)
+}
+
+func TestVSphereKubernetes125Ubuntu2204SimpleFlow(t *testing.T) {
+	test := framework.NewClusterE2ETest(
+		t,
+		framework.NewVSphere(t, framework.WithUbuntu125(framework.Ubuntu2204Version)),
+		framework.WithClusterFiller(api.WithKubernetesVersion(v1alpha1.Kube125)),
+	)
+	runSimpleFlow(test)
+}
+
+func TestVSphereKubernetes126Ubuntu2204SimpleFlow(t *testing.T) {
+	test := framework.NewClusterE2ETest(
+		t,
+		framework.NewVSphere(t, framework.WithUbuntu126(framework.Ubuntu2204Version)),
+		framework.WithClusterFiller(api.WithKubernetesVersion(v1alpha1.Kube126)),
+	)
+	runSimpleFlow(test)
+}
+
+func TestVSphereKubernetes127Ubuntu2204SimpleFlow(t *testing.T) {
+	test := framework.NewClusterE2ETest(
+		t,
+		framework.NewVSphere(t, framework.WithUbuntu127(framework.Ubuntu2204Version)),
 		framework.WithClusterFiller(api.WithKubernetesVersion(v1alpha1.Kube127)),
 	)
 	runSimpleFlow(test)
@@ -2001,6 +2046,66 @@ func TestVSphereKubernetes126UbuntuTo127Upgrade(t *testing.T) {
 	)
 }
 
+func TestVSphereKubernetes125To126Ubuntu2204Upgrade(t *testing.T) {
+	provider := framework.NewVSphere(t, framework.WithUbuntu125(framework.Ubuntu2204Version))
+	test := framework.NewClusterE2ETest(
+		t,
+		provider,
+		framework.WithClusterFiller(api.WithKubernetesVersion(v1alpha1.Kube125)),
+	)
+	runSimpleUpgradeFlow(
+		test,
+		v1alpha1.Kube126,
+		framework.WithClusterUpgrade(api.WithKubernetesVersion(v1alpha1.Kube126)),
+		provider.WithProviderUpgrade(provider.Ubuntu126Template(framework.Ubuntu2204Version)),
+	)
+}
+
+func TestVSphereKubernetes126To127Ubuntu2204Upgrade(t *testing.T) {
+	provider := framework.NewVSphere(t, framework.WithUbuntu126(framework.Ubuntu2204Version))
+	test := framework.NewClusterE2ETest(
+		t,
+		provider,
+		framework.WithClusterFiller(api.WithKubernetesVersion(v1alpha1.Kube126)),
+	)
+	runSimpleUpgradeFlow(
+		test,
+		v1alpha1.Kube127,
+		framework.WithClusterUpgrade(api.WithKubernetesVersion(v1alpha1.Kube127)),
+		provider.WithProviderUpgrade(provider.Ubuntu127Template(framework.Ubuntu2204Version)),
+	)
+}
+
+func TestVSphereKubernetes126Ubuntu2004To2204Upgrade(t *testing.T) {
+	provider := framework.NewVSphere(t, framework.WithUbuntu126())
+	test := framework.NewClusterE2ETest(
+		t,
+		provider,
+		framework.WithClusterFiller(api.WithKubernetesVersion(v1alpha1.Kube126)),
+	)
+	runSimpleUpgradeFlow(
+		test,
+		v1alpha1.Kube126,
+		framework.WithClusterUpgrade(api.WithKubernetesVersion(v1alpha1.Kube126)),
+		provider.WithProviderUpgrade(provider.Ubuntu126Template(framework.Ubuntu2204Version)),
+	)
+}
+
+func TestVSphereKubernetes127Ubuntu2004To2204Upgrade(t *testing.T) {
+	provider := framework.NewVSphere(t, framework.WithUbuntu127())
+	test := framework.NewClusterE2ETest(
+		t,
+		provider,
+		framework.WithClusterFiller(api.WithKubernetesVersion(v1alpha1.Kube127)),
+	)
+	runSimpleUpgradeFlow(
+		test,
+		v1alpha1.Kube127,
+		framework.WithClusterUpgrade(api.WithKubernetesVersion(v1alpha1.Kube127)),
+		provider.WithProviderUpgrade(provider.Ubuntu127Template(framework.Ubuntu2204Version)),
+	)
+}
+
 func TestVSphereKubernetes126UbuntuTo127UpgradeCiliumPolicyEnforcementMode(t *testing.T) {
 	provider := framework.NewVSphere(t, framework.WithUbuntu126())
 	test := framework.NewClusterE2ETest(
@@ -2225,7 +2330,7 @@ func TestVSphereKubernetes124BottlerocketUpgradeFromLatestMinorRelease(t *testin
 		framework.WithVSphereFillers(
 			api.WithOsFamilyForAllMachines(v1alpha1.Bottlerocket),
 		),
-		framework.WithBottlerocketFromRelease(release, v1alpha1.Kube124),
+		framework.WithBottlerocketForRelease(release, v1alpha1.Kube124),
 	)
 	test := framework.NewClusterE2ETest(
 		t,

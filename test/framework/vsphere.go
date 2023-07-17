@@ -128,230 +128,95 @@ func NewVSphere(t *testing.T, opts ...VSphereOpt) *VSphere {
 	return v
 }
 
-// WithRedHat123VSphere vsphere test with redhat 1.23.
-func WithRedHat123VSphere() VSphereOpt {
+// withVSphereKubeVersionAndOS returns a VSphereOpt that adds API fillers to use a vSphere template for
+// the specified OS family and version (default if not provided), corresponding to a particular
+// Kubernetes version, in addition to configuring all machine configs to use this OS family.
+func withVSphereKubeVersionAndOS(osFamily anywherev1.OSFamily, kubeVersion anywherev1.KubernetesVersion, osVersion ...string) VSphereOpt {
 	return func(v *VSphere) {
 		v.fillers = append(v.fillers,
-			api.WithTemplateForAllMachines(v.templateForDevRelease(anywherev1.RedHat, anywherev1.Kube123)),
-			api.WithOsFamilyForAllMachines(anywherev1.RedHat),
+			v.templateForKubeVersionAndOS(osFamily, kubeVersion, osVersion...),
+			api.WithOsFamilyForAllMachines(osFamily),
 		)
 	}
+}
+
+// WithRedHat123VSphere vsphere test with redhat 1.23.
+func WithRedHat123VSphere(osVersion ...string) VSphereOpt {
+	return withVSphereKubeVersionAndOS(anywherev1.RedHat, anywherev1.Kube123, osVersion...)
 }
 
 // WithRedHat124VSphere vsphere test with redhat 1.24.
-func WithRedHat124VSphere() VSphereOpt {
-	return func(v *VSphere) {
-		v.fillers = append(v.fillers,
-			api.WithTemplateForAllMachines(v.templateForDevRelease(anywherev1.RedHat, anywherev1.Kube124)),
-			api.WithOsFamilyForAllMachines(anywherev1.RedHat),
-		)
-	}
+func WithRedHat124VSphere(osVersion ...string) VSphereOpt {
+	return withVSphereKubeVersionAndOS(anywherev1.RedHat, anywherev1.Kube124, osVersion...)
 }
 
 // WithRedHat125VSphere vsphere test with redhat 1.25.
-func WithRedHat125VSphere() VSphereOpt {
-	return func(v *VSphere) {
-		v.fillers = append(v.fillers,
-			api.WithTemplateForAllMachines(v.templateForDevRelease(anywherev1.RedHat, anywherev1.Kube125)),
-			api.WithOsFamilyForAllMachines(anywherev1.RedHat),
-		)
-	}
+func WithRedHat125VSphere(osVersion ...string) VSphereOpt {
+	return withVSphereKubeVersionAndOS(anywherev1.RedHat, anywherev1.Kube125, osVersion...)
 }
 
 // WithRedHat126VSphere vsphere test with redhat 1.26.
-func WithRedHat126VSphere() VSphereOpt {
-	return func(v *VSphere) {
-		v.fillers = append(v.fillers,
-			api.WithTemplateForAllMachines(v.templateForDevRelease(anywherev1.RedHat, anywherev1.Kube126)),
-			api.WithOsFamilyForAllMachines(anywherev1.RedHat),
-		)
-	}
+func WithRedHat126VSphere(osVersion ...string) VSphereOpt {
+	return withVSphereKubeVersionAndOS(anywherev1.RedHat, anywherev1.Kube126, osVersion...)
 }
 
 // WithRedHat127VSphere vsphere test with redhat 1.27.
-func WithRedHat127VSphere() VSphereOpt {
-	return func(v *VSphere) {
-		v.fillers = append(v.fillers,
-			api.WithTemplateForAllMachines(v.templateForDevRelease(anywherev1.RedHat, anywherev1.Kube127)),
-			api.WithOsFamilyForAllMachines(anywherev1.RedHat),
-		)
-	}
+func WithRedHat127VSphere(osVersion ...string) VSphereOpt {
+	return withVSphereKubeVersionAndOS(anywherev1.RedHat, anywherev1.Kube127, osVersion...)
 }
 
 // WithUbuntu127 returns a VSphereOpt that adds API fillers to use a Ubuntu vSphere template for k8s 1.27
 // and the "ubuntu" osFamily in all machine configs.
-func WithUbuntu127() VSphereOpt {
-	return func(v *VSphere) {
-		v.fillers = append(v.fillers,
-			api.WithTemplateForAllMachines(v.templateForDevRelease(anywherev1.Ubuntu, anywherev1.Kube127)),
-			api.WithOsFamilyForAllMachines(anywherev1.Ubuntu),
-		)
-	}
+func WithUbuntu127(osVersion ...string) VSphereOpt {
+	return withVSphereKubeVersionAndOS(anywherev1.Ubuntu, anywherev1.Kube127, osVersion...)
 }
 
 // WithUbuntu126 returns a VSphereOpt that adds API fillers to use a Ubuntu vSphere template for k8s 1.26
 // and the "ubuntu" osFamily in all machine configs.
-func WithUbuntu126() VSphereOpt {
-	return func(v *VSphere) {
-		v.fillers = append(v.fillers,
-			api.WithTemplateForAllMachines(v.templateForDevRelease(anywherev1.Ubuntu, anywherev1.Kube126)),
-			api.WithOsFamilyForAllMachines(anywherev1.Ubuntu),
-		)
-	}
+func WithUbuntu126(osVersion ...string) VSphereOpt {
+	return withVSphereKubeVersionAndOS(anywherev1.Ubuntu, anywherev1.Kube126, osVersion...)
 }
 
 // WithUbuntu125 returns a VSphereOpt that adds API fillers to use a Ubuntu vSphere template for k8s 1.25
 // and the "ubuntu" osFamily in all machine configs.
-func WithUbuntu125() VSphereOpt {
-	return func(v *VSphere) {
-		v.fillers = append(v.fillers,
-			api.WithTemplateForAllMachines(v.templateForDevRelease(anywherev1.Ubuntu, anywherev1.Kube125)),
-			api.WithOsFamilyForAllMachines(anywherev1.Ubuntu),
-		)
-	}
+func WithUbuntu125(osVersion ...string) VSphereOpt {
+	return withVSphereKubeVersionAndOS(anywherev1.Ubuntu, anywherev1.Kube125, osVersion...)
 }
 
 // WithUbuntu124 returns a VSphereOpt that adds API fillers to use a Ubuntu vSphere template for k8s 1.24
 // and the "ubuntu" osFamily in all machine configs.
-func WithUbuntu124() VSphereOpt {
-	return func(v *VSphere) {
-		v.fillers = append(v.fillers,
-			api.WithTemplateForAllMachines(v.templateForDevRelease(anywherev1.Ubuntu, anywherev1.Kube124)),
-			api.WithOsFamilyForAllMachines(anywherev1.Ubuntu),
-		)
-	}
+func WithUbuntu124(osVersion ...string) VSphereOpt {
+	return withVSphereKubeVersionAndOS(anywherev1.Ubuntu, anywherev1.Kube124, osVersion...)
 }
 
 // WithUbuntu123 returns a VSphereOpt that adds API fillers to use a Ubuntu vSphere template for k8s 1.23
 // and the "ubuntu" osFamily in all machine configs.
-func WithUbuntu123() VSphereOpt {
-	return func(v *VSphere) {
-		v.fillers = append(v.fillers,
-			api.WithTemplateForAllMachines(v.templateForDevRelease(anywherev1.Ubuntu, anywherev1.Kube123)),
-			api.WithOsFamilyForAllMachines(anywherev1.Ubuntu),
-		)
-	}
+func WithUbuntu123(osVersion ...string) VSphereOpt {
+	return withVSphereKubeVersionAndOS(anywherev1.Ubuntu, anywherev1.Kube123, osVersion...)
 }
 
-func WithBottleRocket123() VSphereOpt {
-	return func(v *VSphere) {
-		v.fillers = append(v.fillers,
-			api.WithTemplateForAllMachines(v.templateForDevRelease(anywherev1.Bottlerocket, anywherev1.Kube123)),
-			api.WithOsFamilyForAllMachines(anywherev1.Bottlerocket),
-		)
-	}
-}
-
-// WithUbuntu123 returns a cluster config filler that sets the kubernetes version of the cluster to 1.23
-// as well as the right ubuntu template and osFamily for all VSphereMachineConfigs.
-func (v *VSphere) WithUbuntu123() api.ClusterConfigFiller {
-	return api.JoinClusterConfigFillers(
-		api.ClusterToConfigFiller(api.WithKubernetesVersion(anywherev1.Kube123)),
-		api.VSphereToConfigFiller(
-			api.WithTemplateForAllMachines(v.templateForDevRelease(anywherev1.Ubuntu, anywherev1.Kube123)),
-			api.WithOsFamilyForAllMachines(anywherev1.Ubuntu),
-		),
-	)
-}
-
-// WithUbuntu124 returns a cluster config filler that sets the kubernetes version of the cluster to 1.24
-// as well as the right ubuntu template and osFamily for all VSphereMachineConfigs.
-func (v *VSphere) WithUbuntu124() api.ClusterConfigFiller {
-	return api.JoinClusterConfigFillers(
-		api.ClusterToConfigFiller(api.WithKubernetesVersion(anywherev1.Kube124)),
-		api.VSphereToConfigFiller(
-			api.WithTemplateForAllMachines(v.templateForDevRelease(anywherev1.Ubuntu, anywherev1.Kube124)),
-			api.WithOsFamilyForAllMachines(anywherev1.Ubuntu),
-		),
-	)
-}
-
-// WithUbuntu125 returns a cluster config filler that sets the kubernetes version of the cluster to 1.25
-// as well as the right ubuntu template and osFamily for all VSphereMachineConfigs.
-func (v *VSphere) WithUbuntu125() api.ClusterConfigFiller {
-	return api.JoinClusterConfigFillers(
-		api.ClusterToConfigFiller(api.WithKubernetesVersion(anywherev1.Kube125)),
-		api.VSphereToConfigFiller(
-			api.WithTemplateForAllMachines(v.templateForDevRelease(anywherev1.Ubuntu, anywherev1.Kube125)),
-			api.WithOsFamilyForAllMachines(anywherev1.Ubuntu),
-		),
-	)
-}
-
-// WithUbuntu126 returns a cluster config filler that sets the kubernetes version of the cluster to 1.26
-// as well as the right ubuntu template and osFamily for all VSphereMachineConfigs.
-func (v *VSphere) WithUbuntu126() api.ClusterConfigFiller {
-	return api.JoinClusterConfigFillers(
-		api.ClusterToConfigFiller(api.WithKubernetesVersion(anywherev1.Kube126)),
-		api.VSphereToConfigFiller(
-			api.WithTemplateForAllMachines(v.templateForDevRelease(anywherev1.Ubuntu, anywherev1.Kube126)),
-			api.WithOsFamilyForAllMachines(anywherev1.Ubuntu),
-		),
-	)
-}
-
-// WithBottleRocket123 returns a cluster config filler that sets the kubernetes version of the cluster to 1.23
-// as well as the right botllerocket template and osFamily for all VSphereMachaineConfigs.
-func (v *VSphere) WithBottleRocket123() api.ClusterConfigFiller {
-	return api.JoinClusterConfigFillers(
-		api.ClusterToConfigFiller(api.WithKubernetesVersion(anywherev1.Kube123)),
-		api.VSphereToConfigFiller(
-			api.WithTemplateForAllMachines(v.templateForDevRelease(anywherev1.Bottlerocket, anywherev1.Kube123)),
-			api.WithOsFamilyForAllMachines(anywherev1.Bottlerocket),
-		),
-	)
-}
-
-// WithBottleRocket124 returns a cluster config filler that sets the kubernetes version of the cluster to 1.24
-// as well as the right botllerocket template and osFamily for all VSphereMachaineConfigs.
-func (v *VSphere) WithBottleRocket124() api.ClusterConfigFiller {
-	return api.JoinClusterConfigFillers(
-		api.ClusterToConfigFiller(api.WithKubernetesVersion(anywherev1.Kube124)),
-		api.VSphereToConfigFiller(
-			api.WithTemplateForAllMachines(v.templateForDevRelease(anywherev1.Bottlerocket, anywherev1.Kube124)),
-			api.WithOsFamilyForAllMachines(anywherev1.Bottlerocket),
-		),
-	)
+func WithBottleRocket123(osVersion ...string) VSphereOpt {
+	return withVSphereKubeVersionAndOS(anywherev1.Bottlerocket, anywherev1.Kube123, osVersion...)
 }
 
 // WithBottleRocket124 returns br 124 var.
-func WithBottleRocket124() VSphereOpt {
-	return func(v *VSphere) {
-		v.fillers = append(v.fillers,
-			api.WithTemplateForAllMachines(v.templateForDevRelease(anywherev1.Bottlerocket, anywherev1.Kube124)),
-			api.WithOsFamilyForAllMachines(anywherev1.Bottlerocket),
-		)
-	}
+func WithBottleRocket124(osVersion ...string) VSphereOpt {
+	return withVSphereKubeVersionAndOS(anywherev1.Bottlerocket, anywherev1.Kube124, osVersion...)
 }
 
 // WithBottleRocket125 returns br 1.25 var.
-func WithBottleRocket125() VSphereOpt {
-	return func(v *VSphere) {
-		v.fillers = append(v.fillers,
-			api.WithTemplateForAllMachines(v.templateForDevRelease(anywherev1.Bottlerocket, anywherev1.Kube125)),
-			api.WithOsFamilyForAllMachines(anywherev1.Bottlerocket),
-		)
-	}
+func WithBottleRocket125(osVersion ...string) VSphereOpt {
+	return withVSphereKubeVersionAndOS(anywherev1.Bottlerocket, anywherev1.Kube125, osVersion...)
 }
 
 // WithBottleRocket126 returns br 1.26 var.
-func WithBottleRocket126() VSphereOpt {
-	return func(v *VSphere) {
-		v.fillers = append(v.fillers,
-			api.WithTemplateForAllMachines(v.templateForDevRelease(anywherev1.Bottlerocket, anywherev1.Kube126)),
-			api.WithOsFamilyForAllMachines(anywherev1.Bottlerocket),
-		)
-	}
+func WithBottleRocket126(osVersion ...string) VSphereOpt {
+	return withVSphereKubeVersionAndOS(anywherev1.Bottlerocket, anywherev1.Kube126, osVersion...)
 }
 
 // WithBottleRocket127 returns br 1.27 var.
-func WithBottleRocket127() VSphereOpt {
-	return func(v *VSphere) {
-		v.fillers = append(v.fillers,
-			api.WithTemplateForAllMachines(v.templateForDevRelease(anywherev1.Bottlerocket, anywherev1.Kube127)),
-			api.WithOsFamilyForAllMachines(anywherev1.Bottlerocket),
-		)
-	}
+func WithBottleRocket127(osVersion ...string) VSphereOpt {
+	return withVSphereKubeVersionAndOS(anywherev1.Bottlerocket, anywherev1.Kube127, osVersion...)
 }
 
 func WithPrivateNetwork() VSphereOpt {
@@ -502,14 +367,50 @@ func (v *VSphere) ClusterConfigUpdates() []api.ClusterConfigFiller {
 
 // WithKubeVersionAndOS returns a cluster config filler that sets the cluster kube version and the right template for all
 // vsphere machine configs.
-func (v *VSphere) WithKubeVersionAndOS(osFamily anywherev1.OSFamily, kubeVersion anywherev1.KubernetesVersion) api.ClusterConfigFiller {
+func (v *VSphere) WithKubeVersionAndOS(osFamily anywherev1.OSFamily, kubeVersion anywherev1.KubernetesVersion, osVersion ...string) api.ClusterConfigFiller {
 	return api.JoinClusterConfigFillers(
 		api.ClusterToConfigFiller(api.WithKubernetesVersion(kubeVersion)),
 		api.VSphereToConfigFiller(
-			api.WithTemplateForAllMachines(v.templateForDevRelease(osFamily, kubeVersion)),
+			v.templateForKubeVersionAndOS(osFamily, kubeVersion, osVersion...),
 			api.WithOsFamilyForAllMachines(osFamily),
 		),
 	)
+}
+
+// WithUbuntu123 returns a cluster config filler that sets the kubernetes version of the cluster to 1.23
+// as well as the right ubuntu template and osFamily for all VSphereMachineConfigs.
+func (v *VSphere) WithUbuntu123(osVersion ...string) api.ClusterConfigFiller {
+	return v.WithKubeVersionAndOS(anywherev1.Ubuntu, anywherev1.Kube123, osVersion...)
+}
+
+// WithUbuntu124 returns a cluster config filler that sets the kubernetes version of the cluster to 1.24
+// as well as the right ubuntu template and osFamily for all VSphereMachineConfigs.
+func (v *VSphere) WithUbuntu124(osVersion ...string) api.ClusterConfigFiller {
+	return v.WithKubeVersionAndOS(anywherev1.Ubuntu, anywherev1.Kube124, osVersion...)
+}
+
+// WithUbuntu125 returns a cluster config filler that sets the kubernetes version of the cluster to 1.25
+// as well as the right ubuntu template and osFamily for all VSphereMachineConfigs.
+func (v *VSphere) WithUbuntu125(osVersion ...string) api.ClusterConfigFiller {
+	return v.WithKubeVersionAndOS(anywherev1.Ubuntu, anywherev1.Kube125, osVersion...)
+}
+
+// WithUbuntu126 returns a cluster config filler that sets the kubernetes version of the cluster to 1.26
+// as well as the right ubuntu template and osFamily for all VSphereMachineConfigs.
+func (v *VSphere) WithUbuntu126(osVersion ...string) api.ClusterConfigFiller {
+	return v.WithKubeVersionAndOS(anywherev1.Ubuntu, anywherev1.Kube126, osVersion...)
+}
+
+// WithBottleRocket123 returns a cluster config filler that sets the kubernetes version of the cluster to 1.23
+// as well as the right botllerocket template and osFamily for all VSphereMachaineConfigs.
+func (v *VSphere) WithBottleRocket123(osVersion ...string) api.ClusterConfigFiller {
+	return v.WithKubeVersionAndOS(anywherev1.Bottlerocket, anywherev1.Kube123, osVersion...)
+}
+
+// WithBottleRocket124 returns a cluster config filler that sets the kubernetes version of the cluster to 1.24
+// as well as the right botllerocket template and osFamily for all VSphereMachaineConfigs.
+func (v *VSphere) WithBottleRocket124(osVersion ...string) api.ClusterConfigFiller {
+	return v.WithKubeVersionAndOS(anywherev1.Bottlerocket, anywherev1.Kube123, osVersion...)
 }
 
 // CleanupVMs deletes all the VMs owned by the test EKS-A cluster. It satisfies the test framework Provider.
@@ -538,54 +439,59 @@ func (v *VSphere) WithNewVSphereWorkerNodeGroup(name string, workerNodeGroup *Wo
 	}
 }
 
+// templateForKubeVersionAndOS returns a vSphere filler for the given OS and Kubernetes version.
+func (v *VSphere) templateForKubeVersionAndOS(osFamily anywherev1.OSFamily, kubeVersion anywherev1.KubernetesVersion, osVersion ...string) api.VSphereFiller {
+	return api.WithTemplateForAllMachines(v.templateForDevRelease(osFamily, kubeVersion, osVersion...))
+}
+
 // Ubuntu123Template returns vsphere filler for 1.23 Ubuntu.
-func (v *VSphere) Ubuntu123Template() api.VSphereFiller {
-	return api.WithTemplateForAllMachines(v.templateForDevRelease(anywherev1.Ubuntu, anywherev1.Kube123))
+func (v *VSphere) Ubuntu123Template(osVersion ...string) api.VSphereFiller {
+	return v.templateForKubeVersionAndOS(anywherev1.Ubuntu, anywherev1.Kube123, osVersion...)
 }
 
 // Ubuntu124Template returns vsphere filler for 1.24 Ubuntu.
-func (v *VSphere) Ubuntu124Template() api.VSphereFiller {
-	return api.WithTemplateForAllMachines(v.templateForDevRelease(anywherev1.Ubuntu, anywherev1.Kube124))
+func (v *VSphere) Ubuntu124Template(osVersion ...string) api.VSphereFiller {
+	return v.templateForKubeVersionAndOS(anywherev1.Ubuntu, anywherev1.Kube124, osVersion...)
 }
 
 // Ubuntu125Template returns vsphere filler for 1.25 Ubuntu.
-func (v *VSphere) Ubuntu125Template() api.VSphereFiller {
-	return api.WithTemplateForAllMachines(v.templateForDevRelease(anywherev1.Ubuntu, anywherev1.Kube125))
+func (v *VSphere) Ubuntu125Template(osVersion ...string) api.VSphereFiller {
+	return v.templateForKubeVersionAndOS(anywherev1.Ubuntu, anywherev1.Kube125, osVersion...)
 }
 
 // Ubuntu126Template returns vsphere filler for 1.26 Ubuntu.
-func (v *VSphere) Ubuntu126Template() api.VSphereFiller {
-	return api.WithTemplateForAllMachines(v.templateForDevRelease(anywherev1.Ubuntu, anywherev1.Kube126))
+func (v *VSphere) Ubuntu126Template(osVersion ...string) api.VSphereFiller {
+	return v.templateForKubeVersionAndOS(anywherev1.Ubuntu, anywherev1.Kube126, osVersion...)
 }
 
 // Ubuntu127Template returns vsphere filler for 1.27 Ubuntu.
-func (v *VSphere) Ubuntu127Template() api.VSphereFiller {
-	return api.WithTemplateForAllMachines(v.templateForDevRelease(anywherev1.Ubuntu, anywherev1.Kube127))
+func (v *VSphere) Ubuntu127Template(osVersion ...string) api.VSphereFiller {
+	return v.templateForKubeVersionAndOS(anywherev1.Ubuntu, anywherev1.Kube127, osVersion...)
 }
 
 // Bottlerocket123Template returns vsphere filler for 1.23 BR.
-func (v *VSphere) Bottlerocket123Template() api.VSphereFiller {
-	return api.WithTemplateForAllMachines(v.templateForDevRelease(anywherev1.Bottlerocket, anywherev1.Kube123))
+func (v *VSphere) Bottlerocket123Template(osVersion ...string) api.VSphereFiller {
+	return v.templateForKubeVersionAndOS(anywherev1.Bottlerocket, anywherev1.Kube123, osVersion...)
 }
 
 // Bottlerocket124Template returns vsphere filler for 1.24 BR.
-func (v *VSphere) Bottlerocket124Template() api.VSphereFiller {
-	return api.WithTemplateForAllMachines(v.templateForDevRelease(anywherev1.Bottlerocket, anywherev1.Kube124))
+func (v *VSphere) Bottlerocket124Template(osVersion ...string) api.VSphereFiller {
+	return v.templateForKubeVersionAndOS(anywherev1.Bottlerocket, anywherev1.Kube124, osVersion...)
 }
 
 // Bottlerocket125Template returns vsphere filler for 1.25 BR.
-func (v *VSphere) Bottlerocket125Template() api.VSphereFiller {
-	return api.WithTemplateForAllMachines(v.templateForDevRelease(anywherev1.Bottlerocket, anywherev1.Kube125))
+func (v *VSphere) Bottlerocket125Template(osVersion ...string) api.VSphereFiller {
+	return v.templateForKubeVersionAndOS(anywherev1.Bottlerocket, anywherev1.Kube125, osVersion...)
 }
 
 // Bottlerocket126Template returns vsphere filler for 1.26 BR.
-func (v *VSphere) Bottlerocket126Template() api.VSphereFiller {
-	return api.WithTemplateForAllMachines(v.templateForDevRelease(anywherev1.Bottlerocket, anywherev1.Kube126))
+func (v *VSphere) Bottlerocket126Template(osVersion ...string) api.VSphereFiller {
+	return v.templateForKubeVersionAndOS(anywherev1.Bottlerocket, anywherev1.Kube126, osVersion...)
 }
 
 // Bottlerocket127Template returns vsphere filler for 1.27 BR.
-func (v *VSphere) Bottlerocket127Template() api.VSphereFiller {
-	return api.WithTemplateForAllMachines(v.templateForDevRelease(anywherev1.Bottlerocket, anywherev1.Kube127))
+func (v *VSphere) Bottlerocket127Template(osVersion ...string) api.VSphereFiller {
+	return v.templateForKubeVersionAndOS(anywherev1.Bottlerocket, anywherev1.Kube127, osVersion...)
 }
 
 // Redhat127Template returns vsphere filler for 1.27 Redhat.
@@ -606,9 +512,9 @@ func (v *VSphere) getDevRelease() *releasev1.EksARelease {
 	return v.devRelease
 }
 
-func (v *VSphere) templateForDevRelease(osFamily anywherev1.OSFamily, kubeVersion anywherev1.KubernetesVersion) string {
+func (v *VSphere) templateForDevRelease(osFamily anywherev1.OSFamily, kubeVersion anywherev1.KubernetesVersion, osVersion ...string) string {
 	v.t.Helper()
-	return v.templatesRegistry.templateForRelease(v.t, osFamily, v.getDevRelease(), kubeVersion)
+	return v.templatesRegistry.templateForRelease(v.t, osFamily, v.getDevRelease(), kubeVersion, osVersion...)
 }
 
 func RequiredVsphereEnvVars() []string {
@@ -647,58 +553,76 @@ func buildVSphereWorkerNodeGroupClusterFiller(machineConfigName string, workerNo
 	return workerNodeGroup.ClusterFiller()
 }
 
-func WithUbuntuForRelease(release *releasev1.EksARelease, kubeVersion anywherev1.KubernetesVersion) VSphereOpt {
-	return optionToSetTemplateForRelease(anywherev1.Ubuntu, release, kubeVersion)
+func WithUbuntuForRelease(release *releasev1.EksARelease, kubeVersion anywherev1.KubernetesVersion, osVersion ...string) VSphereOpt {
+	return optionToSetTemplateForRelease(anywherev1.Ubuntu, release, kubeVersion, osVersion...)
 }
 
-func WithBottlerocketFromRelease(release *releasev1.EksARelease, kubeVersion anywherev1.KubernetesVersion) VSphereOpt {
-	return optionToSetTemplateForRelease(anywherev1.Bottlerocket, release, kubeVersion)
+func WithBottlerocketForRelease(release *releasev1.EksARelease, kubeVersion anywherev1.KubernetesVersion, osVersion ...string) VSphereOpt {
+	return optionToSetTemplateForRelease(anywherev1.Bottlerocket, release, kubeVersion, osVersion...)
 }
 
 // WithRedhatForRelease sets the redhat template for the given release.
-func WithRedhatForRelease(release *releasev1.EksARelease, kubeVersion anywherev1.KubernetesVersion) VSphereOpt {
-	return optionToSetTemplateForRelease(anywherev1.RedHat, release, kubeVersion)
+func WithRedhatForRelease(release *releasev1.EksARelease, kubeVersion anywherev1.KubernetesVersion, osVersion ...string) VSphereOpt {
+	return optionToSetTemplateForRelease(anywherev1.RedHat, release, kubeVersion, osVersion...)
 }
 
-func (v *VSphere) WithBottleRocketForRelease(release *releasev1.EksARelease, kubeVersion anywherev1.KubernetesVersion) api.ClusterConfigFiller {
+func (v *VSphere) WithBottleRocketForRelease(release *releasev1.EksARelease, kubeVersion anywherev1.KubernetesVersion, osVersion ...string) api.ClusterConfigFiller {
 	return api.VSphereToConfigFiller(
-		api.WithTemplateForAllMachines(v.templatesRegistry.templateForRelease(v.t, anywherev1.Bottlerocket, release, kubeVersion)),
+		api.WithTemplateForAllMachines(v.templatesRegistry.templateForRelease(v.t, anywherev1.Bottlerocket, release, kubeVersion, osVersion...)),
 	)
 }
 
-func optionToSetTemplateForRelease(osFamily anywherev1.OSFamily, release *releasev1.EksARelease, kubeVersion anywherev1.KubernetesVersion) VSphereOpt {
+func optionToSetTemplateForRelease(osFamily anywherev1.OSFamily, release *releasev1.EksARelease, kubeVersion anywherev1.KubernetesVersion, osVersion ...string) VSphereOpt {
 	return func(v *VSphere) {
 		v.fillers = append(v.fillers,
-			api.WithTemplateForAllMachines(v.templatesRegistry.templateForRelease(v.t, osFamily, release, kubeVersion)),
+			api.WithTemplateForAllMachines(v.templatesRegistry.templateForRelease(v.t, osFamily, release, kubeVersion, osVersion...)),
 		)
 	}
 }
 
 // envVarForTemplate looks for explicit configuration through an env var: "T_VSPHERE_TEMPLATE_{osFamily}_{eks-d version}"
 // eg: T_VSPHERE_TEMPLATE_REDHAT_KUBERNETES_1_23_EKS_22.
-func (v *VSphere) envVarForTemplate(osFamily, eksDName string) string {
-	return fmt.Sprintf("T_VSPHERE_TEMPLATE_%s_%s", strings.ToUpper(osFamily), strings.ToUpper(strings.ReplaceAll(eksDName, "-", "_")))
+func (v *VSphere) envVarForTemplate(osFamily, osVersion, eksDName string) string {
+	// Use the old template env var naming scheme for backwards compatibility.
+	templateEnvVar := fmt.Sprintf("T_VSPHERE_TEMPLATE_%s_%s", strings.ToUpper(osFamily), strings.ToUpper(strings.ReplaceAll(eksDName, "-", "_")))
+	// If the OS version provided is not the default one, include it in the env var name.
+	if osVersion != defaultOSVersions[osFamily] {
+		templateEnvVar = fmt.Sprintf("T_VSPHERE_TEMPLATE_%s_%s_%s", strings.ToUpper(osFamily), osVersion, strings.ToUpper(strings.ReplaceAll(eksDName, "-", "_")))
+	}
+	return templateEnvVar
 }
 
 // defaultNameForTemplate looks for a template with the name path: "{folder}/{eks-d version}-{osFamily}"
 // eg: /SDDC-Datacenter/vm/Templates/kubernetes-1-23-eks-22-redhat.
-func (v *VSphere) defaultNameForTemplate(osFamily, eksDName string) string {
+func (v *VSphere) defaultNameForTemplate(osFamily, osVersion, eksDName string) string {
 	folder := v.testsConfig.TemplatesFolder
 	if folder == "" {
 		v.t.Log("vSphere templates folder is not configured.")
 		return ""
 	}
-	return filepath.Join(folder, fmt.Sprintf("%s-%s", strings.ToLower(eksDName), strings.ToLower(osFamily)))
+	// Use the old template naming scheme for backwards compatibility.
+	defaultTemplateName := fmt.Sprintf("%s-%s", strings.ToLower(eksDName), strings.ToLower(osFamily))
+	// If the OS version provided is not the default one, include it in the template name.
+	if osVersion != defaultOSVersions[osFamily] {
+		defaultTemplateName = fmt.Sprintf("%s-%s-%s", strings.ToLower(eksDName), strings.ToLower(osFamily), osVersion)
+	}
+	return filepath.Join(folder, defaultTemplateName)
 }
 
 // defaultEnvVarForTemplate returns the value of the default template env vars: "T_VSPHERE_TEMPLATE_{osFamily}_{kubeVersion}"
 // eg. T_VSPHERE_TEMPLATE_REDHAT_1_23.
-func (v *VSphere) defaultEnvVarForTemplate(osFamily string, kubeVersion anywherev1.KubernetesVersion) string {
+func (v *VSphere) defaultEnvVarForTemplate(osFamily, osVersion string, kubeVersion anywherev1.KubernetesVersion) string {
 	if osFamily == "bottlerocket" {
 		// This is only to maintain backwards compatibility with old env var naming
 		osFamily = "br"
 	}
-	return fmt.Sprintf("T_VSPHERE_TEMPLATE_%s_%s", strings.ToUpper(osFamily), strings.ReplaceAll(string(kubeVersion), ".", "_"))
+	// Use the old template env var naming scheme for backwards compatibility.
+	defaultTemplateEnvVar := fmt.Sprintf("T_VSPHERE_TEMPLATE_%s_%s", strings.ToUpper(osFamily), strings.ReplaceAll(string(kubeVersion), ".", "_"))
+	// If the OS version provided is not the default one, include it in the env var name.
+	if osVersion != defaultOSVersions[osFamily] {
+		defaultTemplateEnvVar = fmt.Sprintf("T_VSPHERE_TEMPLATE_%s_%s_%s", strings.ToUpper(osFamily), osVersion, strings.ReplaceAll(string(kubeVersion), ".", "_"))
+	}
+	return defaultTemplateEnvVar
 }
 
 // searchTemplate returns template name if the given template exists in the datacenter.

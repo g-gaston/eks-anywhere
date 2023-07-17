@@ -84,7 +84,7 @@ func (d *Docker) ClusterStateValidations() []clusterf.StateValidation {
 }
 
 // WithKubeVersionAndOS returns a cluster config filler that sets the cluster kube version.
-func (d *Docker) WithKubeVersionAndOS(osFamily anywherev1.OSFamily, kubeVersion anywherev1.KubernetesVersion) api.ClusterConfigFiller {
+func (d *Docker) WithKubeVersionAndOS(osFamily anywherev1.OSFamily, kubeVersion anywherev1.KubernetesVersion, osVersion ...string) api.ClusterConfigFiller {
 	return api.JoinClusterConfigFillers(
 		api.ClusterToConfigFiller(api.WithKubernetesVersion(kubeVersion)),
 	)
