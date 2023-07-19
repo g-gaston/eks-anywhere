@@ -6150,14 +6150,6 @@ rules:
   - patch
   - update
 - apiGroups:
-  - anywhere.eks.amazonaws.com
-  resources:
-  - eksareleases
-  verbs:
-  - get
-  - list
-  - watch
-- apiGroups:
   - packages.eks.amazonaws.com
   resources:
   - packagebundlecontrollers
@@ -6278,6 +6270,14 @@ rules:
   - anywhere.eks.amazonaws.com
   resources:
   - bundles
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - anywhere.eks.amazonaws.com
+  resources:
+  - eksareleases
   verbs:
   - get
   - list
