@@ -70,8 +70,10 @@ func BuildSpecFromConfig(ctx context.Context, client Client, config *Config) (*S
 
 func fetchAllEksdReleases(ctx context.Context, client Client, cluster *v1alpha1.Cluster, bundles *v1alpha1release.Bundles) ([]eksdv1alpha1.Release, error) {
 	m := make([]eksdv1alpha1.Release, 0)
+	visited := map[string]bool{}
 
 	version := cluster.Spec.KubernetesVersion
+	visited[string(version)] = true
 	eksd, err := getEksdRelease(ctx, client, version, bundles)
 	if err != nil && eksd == nil {
 		return nil, err
@@ -81,6 +83,10 @@ func fetchAllEksdReleases(ctx context.Context, client Client, cluster *v1alpha1.
 	for _, wng := range cluster.Spec.WorkerNodeGroupConfigurations {
 		if wng.KubernetesVersion != nil {
 			version := *wng.KubernetesVersion
+			if _, ok := visited[string(version)]; ok {
+				continue
+			}
+			visited[string(version)] = true
 			eksd, err = getEksdRelease(ctx, client, version, bundles)
 			if err != nil {
 				return nil, err

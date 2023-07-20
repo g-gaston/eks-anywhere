@@ -177,7 +177,7 @@ func getVersionBundles(version eksav1alpha1.KubernetesVersion, b *v1alpha1.Bundl
 	return vb, nil
 }
 
-// VersionBundles returns a VersionsBundle if it exists in the VersionsBundles map.
+// VersionsBundle returns a VersionsBundle if one exists for the provided kubernetes version and nil otherwise.
 func (s *Spec) VersionBundles(version eksav1alpha1.KubernetesVersion) *VersionsBundle {
 	vb, ok := s.VersionsBundles[version]
 	if !ok {

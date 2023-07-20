@@ -101,9 +101,6 @@ func (cs *TemplateBuilder) GenerateCAPISpecWorkers(clusterSpec *cluster.Spec, wo
 func buildTemplateMapCP(clusterSpec *cluster.Spec) (map[string]interface{}, error) {
 	datacenterConfigSpec := clusterSpec.CloudStackDatacenter.Spec
 	versionsBundle := clusterSpec.ControlPlaneVersionsBundle()
-	if versionsBundle == nil {
-		return nil, fmt.Errorf("could not find VersionsBundle")
-	}
 
 	format := "cloud-config"
 	host, port, err := getValidControlPlaneHostPort(clusterSpec.Cluster.Spec.ControlPlaneConfiguration.Endpoint.Host)

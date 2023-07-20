@@ -265,16 +265,16 @@ func getChartURIAndVersion(versionsBundle *cluster.VersionsBundle) (uri, version
 	return uri, version
 }
 
-func getKubeVersion(spec *cluster.Spec, versionsBundle *cluster.VersionsBundle) (*semver.Version, error) {
+func getKubeVersion(versionsBundle *cluster.VersionsBundle) (*semver.Version, error) {
 	k8sVersion, err := semver.New(versionsBundle.KubeDistro.Kubernetes.Tag)
 	if err != nil {
-		return nil, fmt.Errorf("parsing kubernetes version %v: %v", spec.Cluster.Spec.KubernetesVersion, err)
+		return nil, fmt.Errorf("parsing kubernetes version %v: %v", versionsBundle.KubeDistro.Kubernetes.Tag, err)
 	}
 	return k8sVersion, nil
 }
 
 func getKubeVersionString(spec *cluster.Spec, versionsBundle *cluster.VersionsBundle) (string, error) {
-	k8sVersion, err := getKubeVersion(spec, versionsBundle)
+	k8sVersion, err := getKubeVersion(versionsBundle)
 	if err != nil {
 		return "", err
 	}

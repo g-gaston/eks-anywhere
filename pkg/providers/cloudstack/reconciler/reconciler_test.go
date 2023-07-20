@@ -331,16 +331,6 @@ func TestReconcileControlPlaneStackedEtcdSuccess(t *testing.T) {
 	)
 }
 
-func TestReconcilerReconcileControlPlaneFailure(t *testing.T) {
-	tt := newReconcilerTest(t)
-	tt.eksaSupportObjs = append(tt.eksaSupportObjs, tt.secret)
-	tt.createAllObjs()
-	spec := tt.buildSpec()
-	spec.Cluster.Spec.KubernetesVersion = ""
-	_, err := tt.reconciler().ReconcileControlPlane(tt.ctx, test.NewNullLogger(), spec)
-	tt.Expect(err).To(MatchError(ContainSubstring("generating cloudstack control plane yaml spec")))
-}
-
 func TestReconcileCNISuccess(t *testing.T) {
 	tt := newReconcilerTest(t)
 	tt.withFakeClient()

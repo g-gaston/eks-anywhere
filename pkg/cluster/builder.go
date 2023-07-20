@@ -94,7 +94,9 @@ func (b FileSpecBuilder) Build(clusterConfigURL string) (*Spec, error) {
 
 func getAllEksdReleases(cluster *v1alpha1.Cluster, bundlesManifest *releasev1.Bundles, reader bundles.Reader) ([]eksdv1.Release, error) {
 	m := make([]eksdv1.Release, 0)
+	visited := map[string]bool{}
 	version := cluster.Spec.KubernetesVersion
+	visited[string(version)] = true
 	eksd, err := getEksdReleases(version, bundlesManifest, reader)
 	if err != nil && eksd == nil {
 		return nil, err
@@ -104,6 +106,10 @@ func getAllEksdReleases(cluster *v1alpha1.Cluster, bundlesManifest *releasev1.Bu
 	for _, wng := range cluster.Spec.WorkerNodeGroupConfigurations {
 		if wng.KubernetesVersion != nil {
 			version = *wng.KubernetesVersion
+			if _, ok := visited[string(version)]; ok {
+				continue
+			}
+			visited[string(version)] = true
 			eksd, err = getEksdReleases(version, bundlesManifest, reader)
 			if err != nil && eksd == nil {
 				return nil, err

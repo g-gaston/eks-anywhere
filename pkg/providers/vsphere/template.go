@@ -125,9 +125,6 @@ func buildTemplateMapCP(
 	controlPlaneMachineSpec, etcdMachineSpec anywherev1.VSphereMachineConfigSpec,
 ) (map[string]interface{}, error) {
 	versionsBundle := clusterSpec.ControlPlaneVersionsBundle()
-	if versionsBundle == nil {
-		return nil, fmt.Errorf("could not find VersionsBundle")
-	}
 	format := "cloud-config"
 	etcdExtraArgs := clusterapi.SecureEtcdTlsCipherSuitesExtraArgs()
 	sharedExtraArgs := clusterapi.SecureTlsCipherSuitesExtraArgs()
