@@ -37,6 +37,21 @@ func (s *Spec) machineConfigs() []*anywherev1.VSphereMachineConfig {
 	return machineConfigs
 }
 
+func (s *Spec) templates() []string {
+	templates := make([]string, 0, len(s.VSphereMachineConfigs))
+	templatesSet := make(map[string]struct{})
+	for _, m := range s.VSphereMachineConfigs {
+		if _, ok := templatesSet[m.Spec.Template]; ok {
+			continue
+		}
+
+		templatesSet[m.Spec.Template] = struct{}{}
+		templates = append(templates, m.Spec.Template)
+	}
+
+	return templates
+}
+
 func etcdMachineConfig(s *cluster.Spec) *anywherev1.VSphereMachineConfig {
 	if s.Cluster.Spec.ExternalEtcdConfiguration == nil || s.Cluster.Spec.ExternalEtcdConfiguration.MachineGroupRef == nil {
 		return nil
