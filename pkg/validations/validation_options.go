@@ -6,6 +6,7 @@ import (
 	"github.com/aws/eks-anywhere/pkg/crypto"
 	"github.com/aws/eks-anywhere/pkg/providers"
 	"github.com/aws/eks-anywhere/pkg/types"
+	"github.com/aws/eks-anywhere/pkg/version"
 )
 
 type Opts struct {
@@ -17,6 +18,7 @@ type Opts struct {
 	TLSValidator       TlsValidator
 	CliConfig          *config.CliConfig
 	SkippedValidations map[string]bool
+	CliVersion         version.Info
 }
 
 func (o *Opts) SetDefaults() {

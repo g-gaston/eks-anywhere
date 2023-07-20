@@ -229,3 +229,17 @@ func (mr *MockClusterValidatorMockRecorder) ValidateManagementClusterName(ctx, l
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ValidateManagementClusterName", reflect.TypeOf((*MockClusterValidator)(nil).ValidateManagementClusterName), ctx, log, cluster)
 }
+
+// ValidateManagementEksaVersion mocks base method.
+func (m *MockClusterValidator) ValidateManagementEksaVersion(ctx context.Context, log logr.Logger, cluster *v1alpha1.Cluster) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ValidateManagementEksaVersion", ctx, log, cluster)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// ValidateManagementEksaVersion indicates an expected call of ValidateManagementEksaVersion.
+func (mr *MockClusterValidatorMockRecorder) ValidateManagementEksaVersion(ctx, log, cluster interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ValidateManagementEksaVersion", reflect.TypeOf((*MockClusterValidator)(nil).ValidateManagementEksaVersion), ctx, log, cluster)
+}

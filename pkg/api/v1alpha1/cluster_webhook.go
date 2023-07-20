@@ -16,7 +16,9 @@ package v1alpha1
 
 import (
 	"fmt"
+	"math"
 	"reflect"
+	"strings"
 
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -27,6 +29,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
 
 	"github.com/aws/eks-anywhere/pkg/features"
+	"github.com/aws/eks-anywhere/pkg/semver"
 )
 
 // log is for logging in this package.
@@ -98,6 +101,10 @@ func (r *Cluster) ValidateUpdate(old runtime.Object) error {
 
 	allErrs = append(allErrs, ValidateKubernetesVersionSkew(r, oldCluster)...)
 
+	allErrs = append(allErrs, validateEksaVersionCluster(r, oldCluster)...)
+
+	allErrs = append(allErrs, validateEksaVersionSkew(r, oldCluster)...)
+
 	if len(allErrs) != 0 {
 		return apierrors.NewInvalid(GroupVersion.WithKind(ClusterKind).GroupKind(), r.Name, allErrs)
 	}
@@ -113,14 +120,72 @@ func (r *Cluster) ValidateUpdate(old runtime.Object) error {
 	return nil
 }
 
+func validateEksaVersionSkew(new, oldCluster *Cluster) field.ErrorList {
+	var allErrs field.ErrorList
+	eksaVersionPath := field.NewPath("spec").Child("EksaVersion")
+
+	if new.Spec.EksaVersion != nil && oldCluster.Spec.EksaVersion != nil {
+		parsedClusterVersion, err := semver.New(string(*oldCluster.Spec.EksaVersion))
+		if err != nil {
+			return allErrs
+		}
+
+		parsedUpgradeVersion, err := semver.New(string(*new.Spec.EksaVersion))
+		if err != nil {
+			allErrs = append(
+				allErrs,
+				field.Invalid(eksaVersionPath, new.Spec.EksaVersion, "upgrade cluster is invalid"))
+		}
+
+		majorVersionDifference := math.Abs(float64(parsedUpgradeVersion.Major) - float64(parsedClusterVersion.Major))
+		minorVersionDifference := float64(parsedUpgradeVersion.Minor) - float64(parsedClusterVersion.Minor)
+		supportedMinorVersionIncrement := float64(1)
+
+		// if major different or upgrade difference greater than one minor version
+		if majorVersionDifference > 0 || minorVersionDifference > supportedMinorVersionIncrement {
+			allErrs = append(
+				allErrs,
+				field.Invalid(eksaVersionPath, new.Spec.EksaVersion, fmt.Sprintf("cannot upgrade to %v from %v: EksaVersion upgrades must be sequential in minor versions", parsedUpgradeVersion, parsedClusterVersion)))
+		}
+
+		// allow "downgrades" if old version is greater than managment cluster
+		failure := oldCluster.Status.FailureMessage
+		if failure != nil && strings.Contains(*failure, "cannot upgrade workload cluster with version") {
+			return allErrs
+		}
+
+		// don't allow downgrades if old version was valid
+		if minorVersionDifference < 0 {
+			allErrs = append(
+				allErrs,
+				field.Invalid(eksaVersionPath, new.Spec.EksaVersion, fmt.Sprintf("cannot downgrade from %v to %v: EksaVersion upgrades must be incremental", parsedClusterVersion, parsedUpgradeVersion)))
+		}
+	}
+
+	return allErrs
+}
+
 func validateBundlesRefCluster(new, old *Cluster) field.ErrorList {
 	var allErrs field.ErrorList
 	bundlesRefPath := field.NewPath("spec").Child("BundlesRef")
 
-	if old.Spec.BundlesRef != nil && new.Spec.BundlesRef == nil {
+	if old.Spec.BundlesRef != nil && new.Spec.BundlesRef == nil && new.Spec.EksaVersion == nil {
 		allErrs = append(
 			allErrs,
 			field.Invalid(bundlesRefPath, new.Spec.BundlesRef, fmt.Sprintf("field cannot be removed after setting. Previous value %v", old.Spec.BundlesRef)))
+	}
+
+	return allErrs
+}
+
+func validateEksaVersionCluster(new, old *Cluster) field.ErrorList {
+	var allErrs field.ErrorList
+	eksaVersionPath := field.NewPath("spec").Child("EksaVersion")
+
+	if old.Spec.EksaVersion != nil && new.Spec.EksaVersion == nil {
+		allErrs = append(
+			allErrs,
+			field.Invalid(eksaVersionPath, new.Spec.BundlesRef, fmt.Sprintf("field cannot be removed after setting. Previous value %v", old.Spec.EksaVersion)))
 	}
 
 	return allErrs

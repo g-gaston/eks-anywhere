@@ -8,6 +8,7 @@ import (
 var SkippableValidations = []string{
 	validations.PDB,
 	validations.VSphereUserPriv,
+	validations.EVS,
 }
 
 func New(opts *validations.Opts) *UpgradeValidations {

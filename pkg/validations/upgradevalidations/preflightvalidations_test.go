@@ -25,7 +25,7 @@ import (
 	"github.com/aws/eks-anywhere/pkg/validations"
 	"github.com/aws/eks-anywhere/pkg/validations/mocks"
 	"github.com/aws/eks-anywhere/pkg/validations/upgradevalidations"
-	releasev1alpha1 "github.com/aws/eks-anywhere/release/api/v1alpha1"
+	"github.com/aws/eks-anywhere/pkg/version"
 )
 
 const (
@@ -314,6 +314,8 @@ func TestPreflightValidationsTinkerbell(t *testing.T) {
 		},
 	}
 
+	ver := test.DevEksaVersion()
+
 	clusterSpec := test.NewClusterSpec(func(s *cluster.Spec) {
 		s.Cluster.Name = testclustername
 		s.Cluster.Spec.ControlPlaneConfiguration = defaultControlPlane
@@ -333,6 +335,7 @@ func TestPreflightValidationsTinkerbell(t *testing.T) {
 				},
 			},
 		}
+		s.Cluster.Spec.EksaVersion = &ver
 	})
 
 	for _, tc := range tests {
@@ -358,6 +361,7 @@ func TestPreflightValidationsTinkerbell(t *testing.T) {
 				ManagementCluster: workloadCluster,
 				Provider:          provider,
 				TLSValidator:      tlsValidator,
+				CliVersion:        version.Info{GitVersion: "v0.0.0-dev"},
 			}
 
 			clusterSpec.Cluster.Spec.KubernetesVersion = anywherev1.KubernetesVersion(tc.upgradeVersion)
@@ -385,7 +389,7 @@ func TestPreflightValidationsTinkerbell(t *testing.T) {
 			k.EXPECT().ValidateNodes(ctx, kubeconfigFilePath).Return(tc.nodeResponse)
 			k.EXPECT().ValidateClustersCRD(ctx, workloadCluster).Return(tc.crdResponse)
 			k.EXPECT().GetClusters(ctx, workloadCluster).Return(tc.getClusterResponse, nil)
-			k.EXPECT().GetEksaCluster(ctx, workloadCluster, clusterSpec.Cluster.Name).Return(existingClusterSpec.Cluster, nil).Times(2)
+			k.EXPECT().GetEksaCluster(ctx, workloadCluster, clusterSpec.Cluster.Name).Return(existingClusterSpec.Cluster, nil).AnyTimes()
 			upgradeValidations := upgradevalidations.New(opts)
 			err := validations.ProcessValidationResults(upgradeValidations.PreflightValidations(ctx))
 			if err != nil && err.Error() != tc.wantErr.Error() {
@@ -1040,6 +1044,8 @@ func TestPreflightValidationsVsphere(t *testing.T) {
 		},
 	}
 
+	ver := test.DevEksaVersion()
+
 	defaultClusterSpec := test.NewClusterSpec(func(s *cluster.Spec) {
 		s.Cluster.Name = testclustername
 		s.Cluster.Spec.ControlPlaneConfiguration = defaultControlPlane
@@ -1093,6 +1099,7 @@ func TestPreflightValidationsVsphere(t *testing.T) {
 		s.GitOpsConfig = defaultGitOps
 		s.OIDCConfig = defaultOIDC
 		s.AWSIamConfig = defaultAWSIAM
+		s.Cluster.Spec.EksaVersion = &ver
 	})
 
 	for _, tc := range tests {
@@ -1118,6 +1125,7 @@ func TestPreflightValidationsVsphere(t *testing.T) {
 				ManagementCluster: workloadCluster,
 				Provider:          provider,
 				TLSValidator:      tlsValidator,
+				CliVersion:        version.Info{GitVersion: "v0.0.0-dev"},
 			}
 
 			clusterSpec.Cluster.Spec.KubernetesVersion = anywherev1.KubernetesVersion(tc.upgradeVersion)
@@ -1126,12 +1134,6 @@ func TestPreflightValidationsVsphere(t *testing.T) {
 			existingProviderSpec := defaultDatacenterSpec.DeepCopy()
 			if tc.modifyExistingSpecFunc != nil {
 				tc.modifyExistingSpecFunc(existingClusterSpec)
-			}
-
-			bundlesResponse := &releasev1alpha1.Bundles{
-				Spec: releasev1alpha1.BundlesSpec{
-					Number: 28,
-				},
 			}
 
 			provider.EXPECT().DatacenterConfig(clusterSpec).Return(existingProviderSpec).MaxTimes(1)
@@ -1143,10 +1145,9 @@ func TestPreflightValidationsVsphere(t *testing.T) {
 			k.EXPECT().ValidateNodes(ctx, kubeconfigFilePath).Return(tc.nodeResponse)
 			k.EXPECT().ValidateClustersCRD(ctx, workloadCluster).Return(tc.crdResponse)
 			k.EXPECT().GetClusters(ctx, workloadCluster).Return(tc.getClusterResponse, nil)
-			k.EXPECT().GetEksaCluster(ctx, workloadCluster, clusterSpec.Cluster.Name).Return(existingClusterSpec.Cluster, nil).MaxTimes(2)
+			k.EXPECT().GetEksaCluster(ctx, workloadCluster, clusterSpec.Cluster.Name).Return(existingClusterSpec.Cluster, nil).AnyTimes()
 			if opts.Spec.Cluster.IsManaged() {
-				k.EXPECT().GetEksaCluster(ctx, workloadCluster, workloadCluster.Name).Return(existingClusterSpec.Cluster, nil).MaxTimes(2)
-				k.EXPECT().GetBundles(ctx, workloadCluster.KubeconfigFile, existingClusterSpec.Cluster.Spec.BundlesRef.Name, existingClusterSpec.Cluster.Spec.BundlesRef.Namespace).Return(bundlesResponse, nil)
+				k.EXPECT().GetEksaCluster(ctx, workloadCluster, workloadCluster.Name).Return(existingClusterSpec.Cluster, nil).AnyTimes()
 			}
 			k.EXPECT().GetEksaGitOpsConfig(ctx, clusterSpec.Cluster.Spec.GitOpsRef.Name, gomock.Any(), gomock.Any()).Return(existingClusterSpec.GitOpsConfig, nil).MaxTimes(1)
 			k.EXPECT().GetEksaOIDCConfig(ctx, clusterSpec.Cluster.Spec.IdentityProviderRefs[1].Name, gomock.Any(), gomock.Any()).Return(existingClusterSpec.OIDCConfig, nil).MaxTimes(1)
@@ -1283,6 +1284,8 @@ func TestPreFlightValidationsGit(t *testing.T) {
 		},
 	}
 
+	ver := test.DevEksaVersion()
+
 	clusterSpec := test.NewClusterSpec(func(s *cluster.Spec) {
 		s.Cluster.Name = testclustername
 		s.Cluster.Spec.ControlPlaneConfiguration = defaultControlPlane
@@ -1329,6 +1332,8 @@ func TestPreFlightValidationsGit(t *testing.T) {
 			},
 		}
 
+		s.Cluster.Spec.EksaVersion = &ver
+
 		s.OIDCConfig = defaultOIDC
 		s.AWSIamConfig = defaultAWSIAM
 		s.FluxConfig = defaultFlux
@@ -1359,6 +1364,7 @@ func TestPreFlightValidationsGit(t *testing.T) {
 				Provider:          provider,
 				TLSValidator:      tlsValidator,
 				CliConfig:         cliConfig,
+				CliVersion:        version.Info{GitVersion: "v0.0.0-dev"},
 			}
 
 			clusterSpec.Cluster.Spec.KubernetesVersion = anywherev1.KubernetesVersion(tc.upgradeVersion)
@@ -1377,7 +1383,7 @@ func TestPreFlightValidationsGit(t *testing.T) {
 			k.EXPECT().ValidateNodes(ctx, kubeconfigFilePath).Return(tc.nodeResponse)
 			k.EXPECT().ValidateClustersCRD(ctx, workloadCluster).Return(tc.crdResponse)
 			k.EXPECT().GetClusters(ctx, workloadCluster).Return(tc.getClusterResponse, nil)
-			k.EXPECT().GetEksaCluster(ctx, workloadCluster, clusterSpec.Cluster.Name).Return(existingClusterSpec.Cluster, nil).Times(2)
+			k.EXPECT().GetEksaCluster(ctx, workloadCluster, clusterSpec.Cluster.Name).Return(existingClusterSpec.Cluster, nil).AnyTimes()
 			k.EXPECT().GetEksaFluxConfig(ctx, clusterSpec.Cluster.Spec.GitOpsRef.Name, gomock.Any(), gomock.Any()).Return(existingClusterSpec.FluxConfig, nil).MaxTimes(1)
 			k.EXPECT().GetEksaOIDCConfig(ctx, clusterSpec.Cluster.Spec.IdentityProviderRefs[0].Name, gomock.Any(), gomock.Any()).Return(existingClusterSpec.OIDCConfig, nil).MaxTimes(1)
 			k.EXPECT().GetEksaAWSIamConfig(ctx, clusterSpec.Cluster.Spec.IdentityProviderRefs[1].Name, gomock.Any(), gomock.Any()).Return(existingClusterSpec.AWSIamConfig, nil).MaxTimes(1)

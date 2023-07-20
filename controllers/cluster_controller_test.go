@@ -335,6 +335,7 @@ func TestClusterReconcilerReconcileConditions(t *testing.T) {
 			iam.EXPECT().Reconcile(logCtx, log, sameName(config.Cluster)).Return(controller.Result{}, nil)
 			providerReconciler.EXPECT().Reconcile(logCtx, log, sameName(config.Cluster)).Times(1)
 			clusterValidator.EXPECT().ValidateManagementClusterName(logCtx, log, sameName(config.Cluster)).Return(nil)
+			clusterValidator.EXPECT().ValidateManagementEksaVersion(logCtx, log, sameName(config.Cluster)).Return(nil)
 
 			mockPkgs.EXPECT().Reconcile(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any())
 
@@ -1276,6 +1277,7 @@ func TestClusterReconcilerPackagesInstall(s *testing.T) {
 		mockIAM := mocks.NewMockAWSIamConfigReconciler(ctrl)
 		mockValid := mocks.NewMockClusterValidator(ctrl)
 		mockValid.EXPECT().ValidateManagementClusterName(logCtx, log, gomock.Any()).Return(nil)
+		mockValid.EXPECT().ValidateManagementEksaVersion(logCtx, log, gomock.Any()).Return(nil)
 		mockPkgs := mocks.NewMockPackagesClient(ctrl)
 		mockPkgs.EXPECT().
 			EnableFullLifecycle(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).

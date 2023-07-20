@@ -17,6 +17,7 @@ import (
 	"github.com/aws/eks-anywhere/pkg/validations"
 	"github.com/aws/eks-anywhere/pkg/validations/createvalidations"
 	"github.com/aws/eks-anywhere/pkg/validations/mocks"
+	"github.com/aws/eks-anywhere/pkg/version"
 	releasev1alpha1 "github.com/aws/eks-anywhere/release/api/v1alpha1"
 )
 
@@ -38,11 +39,13 @@ func newPreflightValidationsTest(t *testing.T) *preflightValidationsTest {
 			Name: "gitops",
 		}
 	})
+	version := version.Info{GitVersion: "v0.0.0-dev"}
 	opts := &validations.Opts{
 		Kubectl:           k,
 		Spec:              clusterSpec,
 		WorkloadCluster:   c,
 		ManagementCluster: c,
+		CliVersion:        version,
 	}
 	return &preflightValidationsTest{
 		WithT: NewWithT(t),
@@ -63,6 +66,7 @@ func TestPreFlightValidationsWorkloadCluster(t *testing.T) {
 	tt.c.Opts.Spec.Cluster.SetManagedBy(mgmtClusterName)
 	tt.c.Opts.Spec.Cluster.Spec.ManagementCluster.Name = mgmtClusterName
 	tt.c.Opts.ManagementCluster.Name = mgmtClusterName
+	version := test.DevEksaVersion()
 
 	mgmt := &v1alpha1.Cluster{
 		ObjectMeta: v1.ObjectMeta{
@@ -76,6 +80,7 @@ func TestPreFlightValidationsWorkloadCluster(t *testing.T) {
 				Name:      "bundles-29",
 				Namespace: constants.EksaSystemNamespace,
 			},
+			EksaVersion: &version,
 		},
 	}
 
@@ -88,8 +93,7 @@ func TestPreFlightValidationsWorkloadCluster(t *testing.T) {
 	tt.k.EXPECT().GetClusters(tt.ctx, tt.c.Opts.WorkloadCluster).Return(nil, nil)
 	tt.k.EXPECT().ValidateClustersCRD(tt.ctx, tt.c.Opts.WorkloadCluster).Return(nil)
 	tt.k.EXPECT().ValidateEKSAClustersCRD(tt.ctx, tt.c.Opts.WorkloadCluster).Return(nil)
-	tt.k.EXPECT().GetEksaCluster(tt.ctx, tt.c.Opts.ManagementCluster, mgmtClusterName).Return(mgmt, nil)
-	tt.k.EXPECT().GetEksaCluster(tt.ctx, tt.c.Opts.ManagementCluster, mgmtClusterName).Return(mgmt, nil)
+	tt.k.EXPECT().GetEksaCluster(tt.ctx, tt.c.Opts.ManagementCluster, mgmtClusterName).Return(mgmt, nil).MaxTimes(3)
 	tt.k.EXPECT().GetBundles(tt.ctx, tt.c.Opts.ManagementCluster.KubeconfigFile, mgmt.Spec.BundlesRef.Name, mgmt.Spec.BundlesRef.Namespace).Return(mgmtBundle, nil)
 
 	tt.Expect(validations.ProcessValidationResults(tt.c.PreflightValidations(tt.ctx))).To(Succeed())

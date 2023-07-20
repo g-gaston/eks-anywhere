@@ -203,6 +203,7 @@ var clusterConfigValidations = []func(*Cluster) error{
 	validateControlPlaneLabels,
 	validatePackageControllerConfiguration,
 	validateCloudStackK8sVersion,
+	validateEksaVersion,
 }
 
 // GetClusterConfig parses a Cluster object from a multiobject yaml file in disk
@@ -882,5 +883,20 @@ func ValidateCloudStackK8sVersion(version KubernetesVersion) error {
 	if kubeVersionSemver.Compare(kube125Semver) != -1 {
 		return errors.New("cloudstack provider does not support K8s version > 1.24")
 	}
+	return nil
+}
+
+func validateEksaVersion(clusterConfig *Cluster) error {
+	if clusterConfig.Spec.BundlesRef != nil && clusterConfig.Spec.EksaVersion != nil {
+		return fmt.Errorf("cannot pass both bundlesRef and eksaVersion. New clusters should use eksaVersion instead of bundlesRef")
+	}
+
+	if clusterConfig.Spec.EksaVersion != nil {
+		_, err := semver.New(string(*clusterConfig.Spec.EksaVersion))
+		if err != nil {
+			return fmt.Errorf("eksaVersion is not a valid semver")
+		}
+	}
+
 	return nil
 }

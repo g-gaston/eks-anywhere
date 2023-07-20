@@ -483,10 +483,31 @@ func (pc *PackageControllerClient) Reconcile(ctx context.Context, logger logr.Lo
 // getBundleFromCluster based on the cluster's k8s version.
 func (pc *PackageControllerClient) getBundleFromCluster(ctx context.Context, client client.Client, clusterObj *anywherev1.Cluster) (*releasev1.Image, error) {
 	bundles := &releasev1.Bundles{}
-	nn := types.NamespacedName{
-		Name:      clusterObj.Spec.BundlesRef.Name,
-		Namespace: clusterObj.Spec.BundlesRef.Namespace,
+
+	nn := types.NamespacedName{}
+
+	if clusterObj.Spec.BundlesRef == nil {
+		eksaRelease := &releasev1.EKSARelease{}
+		if clusterObj.Spec.EksaVersion == nil {
+			return nil, fmt.Errorf("cannot get bundle: eksaVersion is nil")
+		}
+		version := string(*clusterObj.Spec.EksaVersion)
+		er := types.NamespacedName{
+			Name:      releasev1.GenerateEKSAReleaseName(version),
+			Namespace: constants.EksaSystemNamespace,
+		}
+		if err := client.Get(ctx, er, eksaRelease); err != nil {
+			return nil, fmt.Errorf("retrieving eksaRelease: %w", err)
+		}
+		nn = types.NamespacedName{
+			Name:      eksaRelease.Spec.BundlesRef.Name,
+			Namespace: eksaRelease.Spec.BundlesRef.Namespace,
+		}
+	} else {
+		nn.Name = clusterObj.Spec.BundlesRef.Name
+		nn.Namespace = clusterObj.Spec.BundlesRef.Namespace
 	}
+
 	if err := client.Get(ctx, nn, bundles); err != nil {
 		return nil, fmt.Errorf("retrieving bundle: %w", err)
 	}

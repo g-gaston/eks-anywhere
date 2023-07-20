@@ -79,6 +79,7 @@ type AWSIamConfigReconciler interface {
 // ClusterValidator runs cluster level preflight validations before it goes to provider reconciler.
 type ClusterValidator interface {
 	ValidateManagementClusterName(ctx context.Context, log logr.Logger, cluster *anywherev1.Cluster) error
+	ValidateManagementEksaVersion(ctx context.Context, log logr.Logger, cluster *anywherev1.Cluster) error
 }
 
 // ClusterReconcilerOption allows to configure the ClusterReconciler.
@@ -359,6 +360,11 @@ func (r *ClusterReconciler) preClusterProviderReconcile(ctx context.Context, log
 	if cluster.IsManaged() {
 		if err := r.clusterValidator.ValidateManagementClusterName(ctx, log, cluster); err != nil {
 			cluster.SetFailure(anywherev1.ManagementClusterRefInvalidReason, err.Error())
+			return controller.Result{}, err
+		}
+
+		if err := r.clusterValidator.ValidateManagementEksaVersion(ctx, log, cluster); err != nil {
+			cluster.Status.FailureMessage = ptr.String(err.Error())
 			return controller.Result{}, err
 		}
 	}

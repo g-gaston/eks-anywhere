@@ -68,6 +68,72 @@ func TestValidateManagementClusterNameInvalid(t *testing.T) {
 		To(MatchError(errors.New("my-management-cluster is not a valid management cluster")))
 }
 
+func TestValidateManagementEksaVersionInvalid(t *testing.T) {
+	v1 := anywherev1.EksaVersion("v0.0.0")
+	v2 := anywherev1.EksaVersion("v0.1.0")
+	badVersion := anywherev1.EksaVersion("badvalue")
+	tests := []struct {
+		name              string
+		wantErr           string
+		managementVersion *anywherev1.EksaVersion
+		workerVersion     *anywherev1.EksaVersion
+	}{
+		{
+			name:              "management nil",
+			wantErr:           "management cluster has nil EksaVersion",
+			managementVersion: nil,
+			workerVersion:     &v1,
+		},
+		{
+			name:              "worker nil",
+			wantErr:           "cluster has nil EksaVersion",
+			managementVersion: &v1,
+			workerVersion:     nil,
+		},
+		{
+			name:              "management invalid version",
+			wantErr:           "invalid major version in semver",
+			managementVersion: &badVersion,
+			workerVersion:     &v1,
+		},
+		{
+			name:              "worker invalid version",
+			wantErr:           "invalid major version in semver",
+			managementVersion: &v1,
+			workerVersion:     &badVersion,
+		},
+		{
+			name:              "fail",
+			wantErr:           "cannot upgrade workload cluster with version",
+			managementVersion: &v1,
+			workerVersion:     &v2,
+		},
+		{
+			name:              "success",
+			wantErr:           "cannot upgrade workload cluster with version",
+			managementVersion: &v1,
+			workerVersion:     &v1,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			tt := newClusterValidatorTest(t)
+			tt.cluster.Spec.EksaVersion = tc.workerVersion
+			tt.managementCluster.Spec.EksaVersion = tc.managementVersion
+			objs := []runtime.Object{tt.cluster, tt.managementCluster}
+			cb := fake.NewClientBuilder()
+			cl := cb.WithRuntimeObjects(objs...).Build()
+
+			validator := clusters.NewClusterValidator(cl)
+			err := validator.ValidateManagementEksaVersion(context.Background(), tt.logger, tt.cluster)
+			if err != nil {
+				tt.Expect(err.Error()).To(ContainSubstring(tc.wantErr))
+			}
+		})
+	}
+}
+
 type clusterValidatorTest struct {
 	*WithT
 	logger            logr.Logger
@@ -76,11 +142,15 @@ type clusterValidatorTest struct {
 }
 
 func newClusterValidatorTest(t *testing.T) *clusterValidatorTest {
+	version := anywherev1.EksaVersion("v0.0.0")
 	logger := test.NewNullLogger()
 	managementCluster := &anywherev1.Cluster{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "my-management-cluster",
 			Namespace: "my-namespace",
+		},
+		Spec: anywherev1.ClusterSpec{
+			EksaVersion: &version,
 		},
 	}
 
@@ -88,6 +158,9 @@ func newClusterValidatorTest(t *testing.T) *clusterValidatorTest {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "my-cluster",
 			Namespace: "my-namespace",
+		},
+		Spec: anywherev1.ClusterSpec{
+			EksaVersion: &version,
 		},
 	}
 	cluster.SetManagedBy("my-management-cluster")

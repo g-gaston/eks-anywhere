@@ -8,6 +8,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	_ "k8s.io/apimachinery/pkg/runtime"
 
+	"github.com/aws/eks-anywhere/internal/test"
 	"github.com/aws/eks-anywhere/pkg/api/v1alpha1"
 	"github.com/aws/eks-anywhere/pkg/constants"
 	"github.com/aws/eks-anywhere/pkg/features"
@@ -839,8 +840,10 @@ func TestClusterValidateUpdateAWSIamNameImmutableAddConfig(t *testing.T) {
 
 func TestClusterValidateUpdateUnsetBundlesRefImmutable(t *testing.T) {
 	cOld := baseCluster()
+	cOld.Spec.BundlesRef = &v1alpha1.BundlesRef{}
 	c := cOld.DeepCopy()
 	c.Spec.BundlesRef = nil
+	c.Spec.EksaVersion = nil
 
 	g := NewWithT(t)
 	g.Expect(c.ValidateUpdate(cOld)).To(MatchError(ContainSubstring("spec.BundlesRef: Invalid value: \"null\": field cannot be removed after setting")))
@@ -1962,6 +1965,7 @@ func newCluster(opts ...func(*v1alpha1.Cluster)) *v1alpha1.Cluster {
 type clusterOpt func(c *v1alpha1.Cluster)
 
 func baseCluster(opts ...clusterOpt) *v1alpha1.Cluster {
+	version := test.DevEksaVersion()
 	c := &v1alpha1.Cluster{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       v1alpha1.ClusterKind,
@@ -1982,11 +1986,11 @@ func baseCluster(opts ...clusterOpt) *v1alpha1.Cluster {
 					Name: "eksa-unit-test",
 				},
 			},
-			BundlesRef: &v1alpha1.BundlesRef{
-				Name:       "bundles-1",
-				Namespace:  constants.EksaSystemNamespace,
-				APIVersion: v1alpha1.SchemeBuilder.GroupVersion.String(),
-			},
+			// BundlesRef: &v1alpha1.BundlesRef{
+			// 	Name:       "bundles-1",
+			// 	Namespace:  constants.EksaSystemNamespace,
+			// 	APIVersion: v1alpha1.SchemeBuilder.GroupVersion.String(),
+			// },
 			WorkerNodeGroupConfigurations: []v1alpha1.WorkerNodeGroupConfiguration{{
 				Name:  "md-0",
 				Count: ptr.Int(1),
@@ -2008,6 +2012,7 @@ func baseCluster(opts ...clusterOpt) *v1alpha1.Cluster {
 				Kind: v1alpha1.VSphereDatacenterKind,
 				Name: "eksa-unit-test",
 			},
+			EksaVersion: &version,
 		},
 	}
 

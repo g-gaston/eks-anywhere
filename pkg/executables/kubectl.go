@@ -1167,6 +1167,11 @@ type TinkerbellMachineConfigResponse struct {
 	Items []*v1alpha1.TinkerbellMachineConfig `json:"items,omitempty"`
 }
 
+// ClusterResponse contains list of EKS-A Cluster.
+type ClusterResponse struct {
+	Items []*v1alpha1.Cluster
+}
+
 type NutanixMachineConfigResponse struct {
 	Items []*v1alpha1.NutanixMachineConfig `json:"items,omitempty"`
 }
@@ -1515,6 +1520,23 @@ func (k *Kubectl) GetEksaCluster(ctx context.Context, cluster *types.Cluster, cl
 	}
 
 	return response, nil
+}
+
+// GetEksaClusters gets all EKSA clusters.
+func (k *Kubectl) GetEksaClusters(ctx context.Context, cluster *types.Cluster) ([]*v1alpha1.Cluster, error) {
+	params := []string{"get", eksaClusterResourceType, "-A", "--kubeconfig", cluster.KubeconfigFile, "-o", "json"}
+	stdOut, err := k.Execute(ctx, params...)
+	if err != nil {
+		return nil, fmt.Errorf("getting eksa clusters: %v", err)
+	}
+
+	response := &ClusterResponse{}
+	err = json.Unmarshal(stdOut.Bytes(), response)
+	if err != nil {
+		return nil, fmt.Errorf("parsing get eksa clusters response: %v", err)
+	}
+
+	return response.Items, nil
 }
 
 func (k *Kubectl) SearchVsphereMachineConfig(ctx context.Context, name string, kubeconfigFile string, namespace string) ([]*v1alpha1.VSphereMachineConfig, error) {

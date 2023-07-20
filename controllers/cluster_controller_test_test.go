@@ -127,6 +127,7 @@ func TestClusterReconcilerEnsureOwnerReferences(t *testing.T) {
 
 	validator := newMockClusterValidator(t)
 	validator.EXPECT().ValidateManagementClusterName(ctx, gomock.AssignableToTypeOf(logr.Logger{}), gomock.AssignableToTypeOf(cluster)).Return(nil)
+	validator.EXPECT().ValidateManagementEksaVersion(ctx, gomock.AssignableToTypeOf(logr.Logger{}), gomock.AssignableToTypeOf(cluster)).Return(nil)
 
 	pcc := newMockPackagesClient(t)
 	pcc.EXPECT().Reconcile(ctx, gomock.Any(), gomock.Any(), gomock.Any()).Return(nil)
@@ -310,6 +311,7 @@ func TestClusterReconcilerSetBundlesRef(t *testing.T) {
 
 	validator := newMockClusterValidator(t)
 	validator.EXPECT().ValidateManagementClusterName(ctx, gomock.AssignableToTypeOf(logr.Logger{}), gomock.AssignableToTypeOf(cluster)).Return(nil)
+	validator.EXPECT().ValidateManagementEksaVersion(ctx, gomock.AssignableToTypeOf(logr.Logger{}), gomock.AssignableToTypeOf(cluster)).Return(nil)
 
 	r := controllers.NewClusterReconciler(cl, newRegistryForDummyProviderReconciler(), newMockAWSIamConfigReconciler(t), validator, pcc)
 	_, err := r.Reconcile(ctx, clusterRequest(cluster))
@@ -361,6 +363,7 @@ func TestClusterReconcilerSetDefaultEksaVersion(t *testing.T) {
 
 	validator := newMockClusterValidator(t)
 	validator.EXPECT().ValidateManagementClusterName(ctx, gomock.AssignableToTypeOf(logr.Logger{}), gomock.AssignableToTypeOf(cluster)).Return(nil)
+	validator.EXPECT().ValidateManagementEksaVersion(ctx, gomock.AssignableToTypeOf(logr.Logger{}), gomock.AssignableToTypeOf(cluster)).Return(nil)
 
 	r := controllers.NewClusterReconciler(cl, newRegistryForDummyProviderReconciler(), newMockAWSIamConfigReconciler(t), validator, pcc)
 	_, err := r.Reconcile(ctx, clusterRequest(cluster))

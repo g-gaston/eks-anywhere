@@ -1459,6 +1459,35 @@ func TestKubectlGetEKSAClusters(t *testing.T) {
 	}
 }
 
+func TestKubectlGetAllEKSAClusters(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		testName         string
+		jsonResponseFile string
+		clusterName      string
+	}{
+		{
+			testName:         "EKS-A cluster found",
+			jsonResponseFile: "testdata/kubectl_eksa_cluster.json",
+			clusterName:      "test-cluster",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.testName, func(t *testing.T) {
+			fileContent := test.ReadFile(t, tt.jsonResponseFile)
+			k, ctx, cluster, e := newKubectl(t)
+			params := []string{"get", "clusters.anywhere.eks.amazonaws.com", "-A", "--kubeconfig", cluster.KubeconfigFile, "-o", "json"}
+			e.EXPECT().Execute(ctx, params).Return(*bytes.NewBufferString(fileContent), nil)
+
+			_, err := k.GetEksaClusters(ctx, cluster)
+			if err != nil {
+				t.Fatalf("Kubectl.GetEKSAClusters() error = %v, want nil", err)
+			}
+		})
+	}
+}
+
 func TestKubectlGetGetApiServerUrlSuccess(t *testing.T) {
 	t.Parallel()
 	wantUrl := "https://127.0.0.1:37479"
