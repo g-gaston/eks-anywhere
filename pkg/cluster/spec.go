@@ -7,8 +7,6 @@ import (
 	eksdv1alpha1 "github.com/aws/eks-distro-build-tooling/release/api/v1alpha1"
 
 	eksav1alpha1 "github.com/aws/eks-anywhere/pkg/api/v1alpha1"
-	"github.com/aws/eks-anywhere/pkg/files"
-	"github.com/aws/eks-anywhere/pkg/manifests/bundles"
 	"github.com/aws/eks-anywhere/pkg/types"
 	"github.com/aws/eks-anywhere/release/api/v1alpha1"
 )
@@ -110,26 +108,6 @@ func NewSpec(config *Config, bundles *v1alpha1.Bundles, eksdReleases []eksdv1alp
 	}
 
 	return s, nil
-}
-
-func (s *Spec) KubeDistroImages() []v1alpha1.Image {
-	images := []v1alpha1.Image{}
-	vb := s.ControlPlaneVersionsBundle()
-	if vb == nil {
-		return images
-	}
-	eksdRelease, err := bundles.ReadEKSD(files.NewReader(), *vb.VersionsBundle)
-	if err != nil || eksdRelease == nil {
-		return images
-	}
-	for _, component := range eksdRelease.Status.Components {
-		for _, asset := range component.Assets {
-			if asset.Image != nil {
-				images = append(images, v1alpha1.Image{URI: asset.Image.URI})
-			}
-		}
-	}
-	return images
 }
 
 func getAllVersionsBundles(cluster *eksav1alpha1.Cluster, bundles *v1alpha1.Bundles, eksdReleases []eksdv1alpha1.Release) (map[eksav1alpha1.KubernetesVersion]*VersionsBundle, error) {
@@ -268,26 +246,6 @@ func kubeDistroRepository(image *eksdv1alpha1.AssetImage) (repo, tag string) {
 	}
 
 	return i.Image()[:lastInd], i.Tag()
-}
-
-func (vb *VersionsBundle) KubeDistroImages() []v1alpha1.Image {
-	var images []v1alpha1.Image
-	images = append(images, vb.KubeDistro.EtcdImage)
-	images = append(images, vb.KubeDistro.ExternalAttacher)
-	images = append(images, vb.KubeDistro.ExternalProvisioner)
-	images = append(images, vb.KubeDistro.LivenessProbe)
-	images = append(images, vb.KubeDistro.NodeDriverRegistrar)
-	images = append(images, vb.KubeDistro.Pause)
-
-	return images
-}
-
-func (vb *VersionsBundle) Images() []v1alpha1.Image {
-	var images []v1alpha1.Image
-	images = append(images, vb.VersionsBundle.Images()...)
-	images = append(images, vb.KubeDistroImages()...)
-
-	return images
 }
 
 func (vb *VersionsBundle) Ovas() []v1alpha1.Archive {
