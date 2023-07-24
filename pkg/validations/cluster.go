@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"math"
 	"strings"
 
 	"github.com/aws/eks-anywhere/pkg/api/v1alpha1"
@@ -178,9 +177,9 @@ func ValidateEksaVersionSkew(ctx context.Context, k KubectlClient, cluster *type
 		return fmt.Errorf("parsing upgrade cli version: %v", err)
 	}
 
-	majorVersionDifference := math.Abs(float64(parsedUpgradeVersion.Major) - float64(parsedClusterVersion.Major))
-	minorVersionDifference := float64(parsedUpgradeVersion.Minor) - float64(parsedClusterVersion.Minor)
-	supportedMinorVersionIncrement := float64(1)
+	majorVersionDifference := int64(parsedUpgradeVersion.Major) - int64(parsedClusterVersion.Major)
+	minorVersionDifference := int64(parsedUpgradeVersion.Minor) - int64(parsedClusterVersion.Minor)
+	var supportedMinorVersionIncrement int64 = 1
 
 	if majorVersionDifference > 0 || !(minorVersionDifference <= supportedMinorVersionIncrement && minorVersionDifference >= 0) {
 		msg := fmt.Sprintf("WARNING: version difference between upgrade version (%d.%d) and cluster version (%d.%d) do not meet the supported version increment of +%f",
