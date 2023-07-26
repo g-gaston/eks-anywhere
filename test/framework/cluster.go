@@ -318,7 +318,7 @@ type Provider interface {
 	CleanupVMs(clusterName string) error
 	UpdateKubeConfig(content *[]byte, clusterName string) error
 	ClusterStateValidations() []clusterf.StateValidation
-	WithKubeVersionAndOS(osFamily v1alpha1.OSFamily, kubeVersion v1alpha1.KubernetesVersion, osVersion ...string) api.ClusterConfigFiller
+	WithKubeVersionAndOS(kubeVersion v1alpha1.KubernetesVersion, os OS) api.ClusterConfigFiller
 	WithNewWorkerNodeGroup(name string, workerNodeGroup *WorkerNodeGroup) api.ClusterConfigFiller
 }
 

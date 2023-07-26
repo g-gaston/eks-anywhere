@@ -1694,47 +1694,60 @@ func TestVSphereKubernetes127Ubuntu2004SimpleFlow(t *testing.T) {
 }
 
 func TestVSphereKubernetes123Ubuntu2204SimpleFlow(t *testing.T) {
-	test := framework.NewClusterE2ETest(
-		t,
-		framework.NewVSphere(t, framework.WithUbuntu123(framework.Ubuntu2204Version)),
-		framework.WithClusterFiller(api.WithKubernetesVersion(v1alpha1.Kube123)),
+	vsphere := framework.NewVSphere(t)
+	test := framework.NewClusterE2ETest(t, vsphere)
+	test.WithClusterConfig(
+		vsphere.WithKubeVersionAndOS(v1alpha1.Kube123, framework.Ubuntu2204),
 	)
+
 	runSimpleFlow(test)
 }
 
 func TestVSphereKubernetes124Ubuntu2204SimpleFlow(t *testing.T) {
-	test := framework.NewClusterE2ETest(
-		t,
-		framework.NewVSphere(t, framework.WithUbuntu124(framework.Ubuntu2204Version)),
-		framework.WithClusterFiller(api.WithKubernetesVersion(v1alpha1.Kube124)),
+	vsphere := framework.NewVSphere(t)
+	test := framework.NewClusterE2ETest(t, vsphere)
+	test.WithClusterConfig(
+		vsphere.WithKubeVersionAndOS(v1alpha1.Kube124, framework.Ubuntu2204),
 	)
+
 	runSimpleFlow(test)
 }
 
 func TestVSphereKubernetes125Ubuntu2204SimpleFlow(t *testing.T) {
-	test := framework.NewClusterE2ETest(
-		t,
-		framework.NewVSphere(t, framework.WithUbuntu125(framework.Ubuntu2204Version)),
-		framework.WithClusterFiller(api.WithKubernetesVersion(v1alpha1.Kube125)),
+	vsphere := framework.NewVSphere(t)
+	test := framework.NewClusterE2ETest(t, vsphere)
+	test.WithClusterConfig(
+		vsphere.WithKubeVersionAndOS(v1alpha1.Kube125, framework.Ubuntu2204),
 	)
+
 	runSimpleFlow(test)
 }
 
 func TestVSphereKubernetes126Ubuntu2204SimpleFlow(t *testing.T) {
-	test := framework.NewClusterE2ETest(
-		t,
-		framework.NewVSphere(t, framework.WithUbuntu126(framework.Ubuntu2204Version)),
-		framework.WithClusterFiller(api.WithKubernetesVersion(v1alpha1.Kube126)),
+	vsphere := framework.NewVSphere(t)
+	test := framework.NewClusterE2ETest(t, vsphere)
+	test.WithClusterConfig(
+		vsphere.WithKubeVersionAndOS(v1alpha1.Kube126, framework.Ubuntu2204),
 	)
+
 	runSimpleFlow(test)
 }
 
 func TestVSphereKubernetes127Ubuntu2204SimpleFlow(t *testing.T) {
-	test := framework.NewClusterE2ETest(
+	runTestWithSimpleFlow(
 		t,
-		framework.NewVSphere(t, framework.WithUbuntu127(framework.Ubuntu2204Version)),
-		framework.WithClusterFiller(api.WithKubernetesVersion(v1alpha1.Kube127)),
+		framework.NewVSphere(t),
+		v1alpha1.Kube127,
+		framework.Ubuntu2204,
 	)
+}
+
+func runTestWithSimpleFlow(t *testing.T, provider framework.Provider, kubeVersion v1alpha1.KubernetesVersion, os framework.OS) {
+	test := framework.NewClusterE2ETest(t, provider)
+	test.WithClusterConfig(
+		provider.WithKubeVersionAndOS(kubeVersion, os),
+	)
+
 	runSimpleFlow(test)
 }
 
