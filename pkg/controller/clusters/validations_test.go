@@ -15,6 +15,7 @@ import (
 	anywherev1 "github.com/aws/eks-anywhere/pkg/api/v1alpha1"
 	"github.com/aws/eks-anywhere/pkg/cluster"
 	"github.com/aws/eks-anywhere/pkg/controller"
+	"github.com/aws/eks-anywhere/pkg/controller/clientutil"
 	"github.com/aws/eks-anywhere/pkg/controller/clusters"
 )
 
@@ -35,7 +36,19 @@ func TestValidateManagementClusterNameSuccess(t *testing.T) {
 	tt := newClusterValidatorTest(t)
 
 	objs := []runtime.Object{tt.cluster, tt.managementCluster}
-	cb := fake.NewClientBuilder()
+	cb := fakeClientBuilder()
+	cl := cb.WithRuntimeObjects(objs...).Build()
+
+	validator := clusters.NewClusterValidator(cl)
+	tt.Expect(validator.ValidateManagementClusterName(context.Background(), tt.logger, tt.cluster)).To(BeNil())
+}
+
+func TestValidateManagementClusterNameDifferentNamespaceSuccess(t *testing.T) {
+	tt := newClusterValidatorTest(t)
+	tt.managementCluster.Namespace = "different-namespace"
+
+	objs := []runtime.Object{tt.cluster, tt.managementCluster}
+	cb := fakeClientBuilder()
 	cl := cb.WithRuntimeObjects(objs...).Build()
 
 	validator := clusters.NewClusterValidator(cl)
@@ -47,7 +60,7 @@ func TestValidateManagementClusterNameMissing(t *testing.T) {
 
 	tt.cluster.Spec.ManagementCluster.Name = "missing"
 	objs := []runtime.Object{tt.cluster, tt.managementCluster}
-	cb := fake.NewClientBuilder()
+	cb := fakeClientBuilder()
 	cl := cb.WithRuntimeObjects(objs...).Build()
 
 	validator := clusters.NewClusterValidator(cl)
@@ -55,12 +68,27 @@ func TestValidateManagementClusterNameMissing(t *testing.T) {
 		To(MatchError(errors.New("unable to retrieve management cluster missing: clusters.anywhere.eks.amazonaws.com \"missing\" not found")))
 }
 
+func TestValidateManagementClusterNameMultiple(t *testing.T) {
+	tt := newClusterValidatorTest(t)
+
+	tt.managementCluster.Namespace = "different-namespace-1"
+	managementCluster2 := tt.managementCluster.DeepCopy()
+	managementCluster2.Namespace = "different-namespace-2"
+	objs := []runtime.Object{tt.cluster, tt.managementCluster, managementCluster2}
+	cb := fakeClientBuilder()
+	cl := cb.WithRuntimeObjects(objs...).Build()
+
+	validator := clusters.NewClusterValidator(cl)
+	tt.Expect(validator.ValidateManagementClusterName(context.Background(), tt.logger, tt.cluster)).
+		To(MatchError(errors.New("found multiple clusters with the name my-management-cluster")))
+}
+
 func TestValidateManagementClusterNameInvalid(t *testing.T) {
 	tt := newClusterValidatorTest(t)
 
 	tt.managementCluster.SetManagedBy("differentCluster")
 	objs := []runtime.Object{tt.cluster, tt.managementCluster}
-	cb := fake.NewClientBuilder()
+	cb := fakeClientBuilder()
 	cl := cb.WithRuntimeObjects(objs...).Build()
 
 	validator := clusters.NewClusterValidator(cl)
@@ -104,4 +132,8 @@ func newClusterValidatorTest(t *testing.T) *clusterValidatorTest {
 		cluster:           cluster,
 		managementCluster: managementCluster,
 	}
+}
+
+func fakeClientBuilder() *fake.ClientBuilder {
+	return fake.NewClientBuilder().WithIndex(&anywherev1.Cluster{}, "metadata.name", clientutil.ClusterNameIndexer)
 }

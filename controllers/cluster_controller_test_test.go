@@ -238,7 +238,7 @@ func TestClusterReconcilerManagementClusterNotFound(t *testing.T) {
 
 	c := envtest.CloneNameNamespace(cluster)
 	api.ShouldEventuallyMatch(ctx, c, func(g Gomega) {
-		g.Expect(c.Status.FailureMessage).To(HaveValue(Equal("Management cluster my-management-cluster does not exist")))
+		g.Expect(c.Status.FailureMessage).To(HaveValue(ContainSubstring("Error retrieving management cluster my-management-cluster:")))
 		g.Expect(c.Status.FailureReason).To(HaveValue(Equal(anywherev1.ManagementClusterRefInvalidReason)))
 	})
 }
