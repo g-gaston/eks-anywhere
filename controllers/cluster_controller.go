@@ -572,11 +572,16 @@ func aggregatedGeneration(config *c.Config) int64 {
 
 func getManagementCluster(ctx context.Context, clus *anywherev1.Cluster, client client.Client) (*anywherev1.Cluster, error) {
 	mgmtCluster, err := clusters.FetchManagementEksaCluster(ctx, client, clus)
+	if apierrors.IsNotFound(err) {
+		clus.SetFailure(
+			anywherev1.ManagementClusterRefInvalidReason,
+			fmt.Sprintf("Management cluster %s does not exist", clus.Spec.ManagementCluster.Name),
+		)
+	}
 	if err != nil {
-		failureMessage := fmt.Sprintf("Error retrieving management cluster %s: %v", clus.Spec.ManagementCluster.Name, err)
-		clus.SetFailure(anywherev1.ManagementClusterRefInvalidReason, failureMessage)
 		return nil, err
 	}
+
 	return mgmtCluster, nil
 }
 

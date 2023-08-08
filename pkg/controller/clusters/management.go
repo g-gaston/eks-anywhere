@@ -2,8 +2,8 @@ package clusters
 
 import (
 	"context"
-	"fmt"
 
+	"github.com/pkg/errors"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -27,17 +27,17 @@ func FetchManagementEksaCluster(ctx context.Context, cli client.Client, cluster 
 	}
 	if apierrors.IsNotFound(err) {
 		// Save error returned from Get if we don't end up finding the cluster through List as it won't return an error
-		notFoundErr := fmt.Errorf("unable to retrieve management cluster %s: %v", cluster.Spec.ManagementCluster.Name, err)
+		notFoundErr := errors.Wrapf(err, "unable to retrieve management cluster %s", cluster.Spec.ManagementCluster.Name)
 		clusterList := &v1alpha1.ClusterList{}
 		if err = cli.List(ctx, clusterList,
 			client.MatchingFields{"metadata.name": cluster.Spec.ManagementCluster.Name}); err != nil {
-			return nil, fmt.Errorf("unable to retrieve management cluster %s: %v", cluster.Spec.ManagementCluster.Name, err)
+			return nil, errors.Wrapf(err, "unable to retrieve management cluster %s", cluster.Spec.ManagementCluster.Name)
 		}
 		if len(clusterList.Items) == 0 {
 			return nil, notFoundErr
 		}
 		if len(clusterList.Items) > 1 {
-			return nil, fmt.Errorf("found multiple clusters with the name %s", cluster.Spec.ManagementCluster.Name)
+			return nil, errors.Errorf("found multiple clusters with the name %s", cluster.Spec.ManagementCluster.Name)
 		}
 		mgmtCluster = &clusterList.Items[0]
 	}
