@@ -9,6 +9,7 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
+	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 )
 
 // log is for logging in this package.
@@ -26,7 +27,7 @@ func (r *OIDCConfig) SetupWebhookWithManager(mgr ctrl.Manager) error {
 var _ webhook.Validator = &OIDCConfig{}
 
 // ValidateCreate implements webhook.Validator so a webhook will be registered for the type.
-func (r *OIDCConfig) ValidateCreate() error {
+func (r *OIDCConfig) ValidateCreate() (admission.Warnings, error) {
 	oidcconfiglog.Info("validate create", "name", r.Name)
 
 	allErrs := r.Validate()
@@ -39,7 +40,7 @@ func (r *OIDCConfig) ValidateCreate() error {
 }
 
 // ValidateUpdate implements webhook.Validator so a webhook will be registered for the type.
-func (r *OIDCConfig) ValidateUpdate(old runtime.Object) error {
+func (r *OIDCConfig) ValidateUpdate(old runtime.Object) (admission.Warnings, error) {
 	oidcconfiglog.Info("validate update", "name", r.Name)
 
 	oldOIDCConfig, ok := old.(*OIDCConfig)
@@ -66,7 +67,7 @@ func (r *OIDCConfig) ValidateUpdate(old runtime.Object) error {
 }
 
 // ValidateDelete implements webhook.Validator so a webhook will be registered for the type.
-func (r *OIDCConfig) ValidateDelete() error {
+func (r *OIDCConfig) ValidateDelete() (admission.Warnings, error) {
 	oidcconfiglog.Info("validate delete", "name", r.Name)
 
 	return nil

@@ -23,6 +23,7 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
+	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 )
 
 // log is for logging in this package.
@@ -52,7 +53,7 @@ func (r *VSphereDatacenterConfig) Default() {
 var _ webhook.Validator = &VSphereDatacenterConfig{}
 
 // ValidateCreate implements webhook.Validator so a webhook will be registered for the type.
-func (r *VSphereDatacenterConfig) ValidateCreate() error {
+func (r *VSphereDatacenterConfig) ValidateCreate() (admission.Warnings, error) {
 	vspheredatacenterconfiglog.Info("validate create", "name", r.Name)
 
 	if err := r.Validate(); err != nil {
@@ -74,7 +75,7 @@ func (r *VSphereDatacenterConfig) ValidateCreate() error {
 }
 
 // ValidateUpdate implements webhook.Validator so a webhook will be registered for the type.
-func (r *VSphereDatacenterConfig) ValidateUpdate(old runtime.Object) error {
+func (r *VSphereDatacenterConfig) ValidateUpdate(old runtime.Object) (admission.Warnings, error) {
 	vspheredatacenterconfiglog.Info("validate update", "name", r.Name)
 
 	oldDatacenterConfig, ok := old.(*VSphereDatacenterConfig)
@@ -135,7 +136,7 @@ func validateImmutableFieldsVSphereCluster(new, old *VSphereDatacenterConfig) fi
 }
 
 // ValidateDelete implements webhook.Validator so a webhook will be registered for the type.
-func (r *VSphereDatacenterConfig) ValidateDelete() error {
+func (r *VSphereDatacenterConfig) ValidateDelete() (admission.Warnings, error) {
 	vspheredatacenterconfiglog.Info("validate delete", "name", r.Name)
 
 	// TODO(user): fill in your validation logic upon object deletion.

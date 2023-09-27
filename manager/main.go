@@ -21,7 +21,7 @@ import (
 	_ "k8s.io/component-base/logs/json/register"
 	"k8s.io/klog/v2"
 	cloudstackv1 "sigs.k8s.io/cluster-api-provider-cloudstack/api/v1beta3"
-	vspherev1 "sigs.k8s.io/cluster-api-provider-vsphere/api/v1beta1"
+	vspherev1 "sigs.k8s.io/cluster-api-provider-vsphere/apis/v1beta1"
 	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
 	kubeadmv1 "sigs.k8s.io/cluster-api/bootstrap/kubeadm/api/v1beta1"
 	clusterctlv1 "sigs.k8s.io/cluster-api/cmd/clusterctl/api/v1alpha3"

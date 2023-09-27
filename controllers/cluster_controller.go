@@ -22,6 +22,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/source"
 
 	anywherev1 "github.com/aws/eks-anywhere/pkg/api/v1alpha1"
+	"github.com/aws/eks-anywhere/pkg/cluster"
 	c "github.com/aws/eks-anywhere/pkg/cluster"
 	"github.com/aws/eks-anywhere/pkg/config"
 	"github.com/aws/eks-anywhere/pkg/constants"
@@ -290,6 +291,14 @@ func (r *ClusterReconciler) Reconcile(ctx context.Context, req ctrl.Request) (re
 		return ctrl.Result{}, err
 	}
 
+	minWaitAfterUpdate := 2 * time.Second
+	lastUpdated := configLastUpdated(config)
+	log.Info("Last updated obj in config", "lastUpdated", lastUpdated, "lastUpdatedCluster", objLastUpdated(cluster))
+	if timeSinceLastUpdate := time.Since(lastUpdated); timeSinceLastUpdate < minWaitAfterUpdate {
+		log.Info("Last update to cluster config was too recent, requeing", "timeSinceLastUpdate", timeSinceLastUpdate)
+		return ctrl.Result{RequeueAfter: minWaitAfterUpdate - timeSinceLastUpdate}, nil
+	}
+
 	if err = r.ensureClusterOwnerReferences(ctx, cluster, config); err != nil {
 		return ctrl.Result{}, err
 	}
@@ -305,6 +314,28 @@ func (r *ClusterReconciler) Reconcile(ctx context.Context, req ctrl.Request) (re
 	}
 
 	return r.reconcile(ctx, log, cluster, aggregatedGeneration)
+}
+
+func configLastUpdated(config *cluster.Config) time.Time {
+	var globalLastUpdated time.Time
+	for _, obj := range config.ClusterAndChildren() {
+		if objLastUpdated := objLastUpdated(obj); globalLastUpdated.Before(objLastUpdated) {
+			globalLastUpdated = objLastUpdated
+		}
+	}
+
+	return globalLastUpdated
+}
+
+func objLastUpdated(obj client.Object) time.Time {
+	var lastUpdated time.Time
+	for _, f := range obj.GetManagedFields() {
+		if f.Time != nil && lastUpdated.Before(f.Time.Time) {
+			lastUpdated = f.Time.Time
+		}
+	}
+
+	return lastUpdated
 }
 
 func (r *ClusterReconciler) reconcile(ctx context.Context, log logr.Logger, cluster *anywherev1.Cluster, aggregatedGeneration int64) (ctrl.Result, error) {

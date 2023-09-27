@@ -925,8 +925,9 @@ func TestClusterValidateUpdateEksaVersionSkew(t *testing.T) {
 			cOld.Status.FailureReason = &reason
 		}
 
-		err := c.ValidateUpdate(cOld)
+		warnings, err := c.ValidateUpdate(cOld)
 		g := NewWithT(t)
+		g.Expect(warnings).To(BeEmpty())
 		if tt.wantErr != "" {
 			g.Expect(c.ValidateUpdate(cOld)).To(MatchError(ContainSubstring(tt.wantErr)))
 		} else {
@@ -1384,7 +1385,8 @@ func TestClusterUpdateEtcdEncryption(t *testing.T) {
 			newCluster.Spec.EtcdEncryption = tt.encryptionConfig
 
 			g := NewWithT(t)
-			err := newCluster.ValidateUpdate(baseCluster)
+			warnings, err := newCluster.ValidateUpdate(baseCluster)
+			g.Expect(warnings).To(BeEmpty())
 			if tt.expectedErr == nil {
 				g.Expect(err).ToNot(HaveOccurred())
 			} else {
@@ -1547,7 +1549,8 @@ func TestClusterValidateCreateSelfManagedUnpaused(t *testing.T) {
 	cluster := baseCluster()
 	g := NewWithT(t)
 	cluster.SetSelfManaged()
-	err := cluster.ValidateCreate()
+	warnings, err := cluster.ValidateCreate()
+	g.Expect(warnings).To(BeEmpty())
 	g.Expect(err).To(MatchError(ContainSubstring("creating new cluster on existing cluster is not supported for self managed clusters")))
 }
 
@@ -1557,7 +1560,8 @@ func TestClusterValidateCreateSelfManagedNotPaused(t *testing.T) {
 	cluster.SetSelfManaged()
 
 	g := NewWithT(t)
-	err := cluster.ValidateCreate()
+	warnings, err := cluster.ValidateCreate()
+	g.Expect(warnings).To(BeEmpty())
 	g.Expect(err).To(MatchError(ContainSubstring("creating new cluster on existing cluster is not supported for self managed clusters")))
 }
 
@@ -1593,7 +1597,8 @@ func TestClusterValidateCreateInvalidCluster(t *testing.T) {
 			tt.cluster.Spec.ControlPlaneConfiguration = v1alpha1.ControlPlaneConfiguration{Endpoint: &v1alpha1.Endpoint{Host: "test-ip"}, MachineGroupRef: &v1alpha1.Ref{Name: "test"}}
 
 			g := NewWithT(t)
-			err := tt.cluster.ValidateCreate()
+			warnings, err := tt.cluster.ValidateCreate()
+			g.Expect(warnings).To(BeEmpty())
 			g.Expect(err).To(MatchError(ContainSubstring("control plane node count must be positive")))
 		})
 	}
@@ -1626,7 +1631,8 @@ func TestClusterValidateUpdateInvalidManagementCluster(t *testing.T) {
 			}}
 
 			g := NewWithT(t)
-			err := tt.clusterNew.ValidateUpdate(clusterOld)
+			warnings, err := tt.clusterNew.ValidateUpdate(clusterOld)
+			g.Expect(warnings).To(BeEmpty())
 			g.Expect(err).To(MatchError(ContainSubstring("worker node count must be >= 0")))
 		})
 	}
@@ -1670,7 +1676,8 @@ func TestClusterValidateUpdateInvalidWorkloadCluster(t *testing.T) {
 			}
 
 			g := NewWithT(t)
-			err := tt.clusterNew.ValidateUpdate(clusterOld)
+			warnings, err := tt.clusterNew.ValidateUpdate(clusterOld)
+			g.Expect(warnings).To(BeEmpty())
 			g.Expect(err).To(MatchError(ContainSubstring("control plane node count must be positive")))
 		})
 	}
@@ -1750,7 +1757,8 @@ func TestClusterValidateUpdateValidManagementCluster(t *testing.T) {
 			tt.updateCluster(newCluster)
 
 			g := NewWithT(t)
-			err := newCluster.ValidateUpdate(tt.oldCluster)
+			warnings, err := newCluster.ValidateUpdate(tt.oldCluster)
+			g.Expect(warnings).To(BeEmpty())
 			g.Expect(err).To(Succeed())
 		})
 	}
@@ -1790,7 +1798,8 @@ func TestClusterValidateUpdateValidWorkloadCluster(t *testing.T) {
 			}}
 
 			g := NewWithT(t)
-			err := tt.clusterNew.ValidateUpdate(clusterOld)
+			warnings, err := tt.clusterNew.ValidateUpdate(clusterOld)
+			g.Expect(warnings).To(BeEmpty())
 			g.Expect(err).To(Succeed())
 		})
 	}
@@ -1805,7 +1814,8 @@ func TestClusterValidateUpdateInvalidRequest(t *testing.T) {
 	cNew := cOld.DeepCopy()
 	cNew.Spec.ControlPlaneConfiguration.Count = cNew.Spec.ControlPlaneConfiguration.Count + 1
 	g := NewWithT(t)
-	err := cNew.ValidateUpdate(cOld)
+	warnings, err := cNew.ValidateUpdate(cOld)
+	g.Expect(warnings).To(BeEmpty())
 	g.Expect(err).To(MatchError(ContainSubstring("spec.ControlPlaneConfiguration: Forbidden: field is immutable")))
 }
 
@@ -1819,7 +1829,8 @@ func TestClusterValidateUpdateRollingAndScalingTinkerbellRequest(t *testing.T) {
 	cNew.Spec.KubernetesVersion = "1.23"
 	cNew.Spec.ControlPlaneConfiguration.Count = cNew.Spec.ControlPlaneConfiguration.Count + 1
 	g := NewWithT(t)
-	err := cNew.ValidateUpdate(cOld)
+	warnings, err := cNew.ValidateUpdate(cOld)
+	g.Expect(warnings).To(BeEmpty())
 	g.Expect(err).To(MatchError(ContainSubstring("cannot perform scale up or down during rolling upgrades. Previous control plane node count")))
 }
 
@@ -1837,7 +1848,8 @@ func TestClusterValidateUpdateAddWNConfig(t *testing.T) {
 	}
 	cNew.Spec.WorkerNodeGroupConfigurations = append(cNew.Spec.WorkerNodeGroupConfigurations, addWNC)
 	g := NewWithT(t)
-	err := cNew.ValidateUpdate(cOld)
+	warnings, err := cNew.ValidateUpdate(cOld)
+	g.Expect(warnings).To(BeEmpty())
 	g.Expect(err).To(MatchError(ContainSubstring("cannot perform scale up or down during rolling upgrades. Please remove the new worker node group")))
 }
 
@@ -1851,7 +1863,8 @@ func TestClusterValidateUpdateAddWNCount(t *testing.T) {
 	cNew.Spec.KubernetesVersion = "1.23"
 	cNew.Spec.WorkerNodeGroupConfigurations[0].Count = ptr.Int(3)
 	g := NewWithT(t)
-	err := cNew.ValidateUpdate(cOld)
+	warnings, err := cNew.ValidateUpdate(cOld)
+	g.Expect(warnings).To(BeEmpty())
 	g.Expect(err).To(MatchError(ContainSubstring("cannot perform scale up or down during rolling upgrades. Previous worker node count")))
 }
 
@@ -1883,7 +1896,8 @@ func TestClusterValidateUpdateLabelTaintsCPTinkerbellRequest(t *testing.T) {
 	cNew.Spec.ControlPlaneConfiguration.Labels = map[string]string{}
 	cNew.Spec.ControlPlaneConfiguration.Taints = []v1.Taint{}
 	g := NewWithT(t)
-	err := cNew.ValidateUpdate(cOld)
+	warnings, err := cNew.ValidateUpdate(cOld)
+	g.Expect(warnings).To(BeEmpty())
 	g.Expect(err).To(MatchError(ContainSubstring("spec.ControlPlaneConfiguration.labels: Forbidden: field is immutable")))
 	g.Expect(err).To(MatchError(ContainSubstring("spec.ControlPlaneConfiguration.taints: Forbidden: field is immutable")))
 }
@@ -1907,7 +1921,8 @@ func TestClusterValidateUpdateLabelTaintsWNTinkerbellRequest(t *testing.T) {
 	cNew.Spec.WorkerNodeGroupConfigurations[0].Taints = []v1.Taint{}
 
 	g := NewWithT(t)
-	err := cNew.ValidateUpdate(cOld)
+	warnings, err := cNew.ValidateUpdate(cOld)
+	g.Expect(warnings).To(BeEmpty())
 	g.Expect(err).To(MatchError(ContainSubstring("spec.WorkerNodeConfiguration.labels: Forbidden: field is immutable")))
 	g.Expect(err).To(MatchError(ContainSubstring("spec.WorkerNodeConfiguration.taints: Forbidden: field is immutable")))
 }
@@ -1939,7 +1954,8 @@ func TestClusterValidateUpdateLabelTaintsMultiWNTinkerbellRequest(t *testing.T) 
 	cNew.Spec.WorkerNodeGroupConfigurations[0].Taints = []v1.Taint{{Key: "key1", Value: "val1", Effect: "NoSchedule", TimeAdded: nil}}
 
 	g := NewWithT(t)
-	err := cNew.ValidateUpdate(cOld)
+	warnings, err := cNew.ValidateUpdate(cOld)
+	g.Expect(warnings).To(BeEmpty())
 	g.Expect(err).To(BeNil())
 }
 
@@ -2012,7 +2028,8 @@ func TestClusterValidateUpdateSkipUpgradeImmutability(t *testing.T) {
 		t.Run(tc.Name, func(t *testing.T) {
 			g := NewWithT(t)
 
-			err := tc.New.ValidateUpdate(tc.Old)
+			warnings, err := tc.New.ValidateUpdate(tc.Old)
+			g.Expect(warnings).To(BeEmpty())
 			if !tc.Error {
 				g.Expect(err).To(Succeed())
 			} else {
@@ -2034,7 +2051,8 @@ func TestClusterValidateUpdateVersionSkew(t *testing.T) {
 	cNew := cOld.DeepCopy()
 	cNew.Spec.KubernetesVersion = "1.24"
 	g := NewWithT(t)
-	err := cNew.ValidateUpdate(cOld)
+	warnings, err := cNew.ValidateUpdate(cOld)
+	g.Expect(warnings).To(BeEmpty())
 	g.Expect(err).To(MatchError(ContainSubstring("only +1 minor version skew is supported")))
 }
 
@@ -2047,7 +2065,8 @@ func TestClusterValidateUpdateVersionSkewDecrement(t *testing.T) {
 	cNew := cOld.DeepCopy()
 	cNew.Spec.KubernetesVersion = "1.23"
 	g := NewWithT(t)
-	err := cNew.ValidateUpdate(cOld)
+	warnings, err := cNew.ValidateUpdate(cOld)
+	g.Expect(warnings).To(BeEmpty())
 	g.Expect(err).To(MatchError(ContainSubstring("kubernetes version downgrade is not supported")))
 }
 
@@ -2060,7 +2079,8 @@ func TestClusterValidateUpdateVersionInvalidNew(t *testing.T) {
 	cNew := cOld.DeepCopy()
 	cNew.Spec.KubernetesVersion = "test"
 	g := NewWithT(t)
-	err := cNew.ValidateUpdate(cOld)
+	warnings, err := cNew.ValidateUpdate(cOld)
+	g.Expect(warnings).To(BeEmpty())
 	g.Expect(err).To(MatchError(ContainSubstring("parsing comparison version: could not parse \"test\" as version")))
 }
 
@@ -2073,7 +2093,8 @@ func TestClusterValidateUpdateVersionInvalidOld(t *testing.T) {
 	cNew := cOld.DeepCopy()
 	cNew.Spec.KubernetesVersion = "1.24"
 	g := NewWithT(t)
-	err := cNew.ValidateUpdate(cOld)
+	warnings, err := cNew.ValidateUpdate(cOld)
+	g.Expect(warnings).To(BeEmpty())
 	g.Expect(err).To(MatchError(ContainSubstring("parsing cluster version: could not parse \"test\" as version")))
 }
 
@@ -2283,7 +2304,9 @@ func TestValidateWorkerVersionSkew(t *testing.T) {
 			oldCluster.Spec.KubernetesVersion = tc.oldVersion
 			oldCluster.Spec.WorkerNodeGroupConfigurations[0].KubernetesVersion = tc.oldWorkerVersion
 
-			err := newCluster.ValidateUpdate(oldCluster)
+			warnings, err := newCluster.ValidateUpdate(oldCluster)
+			g := NewWithT(t)
+			g.Expect(warnings).To(BeEmpty())
 			if err != nil && !strings.Contains(err.Error(), tc.wantErr.Error()) {
 				t.Errorf("%v got = %v, \nwant %v", tc.name, err, tc.wantErr)
 			}
@@ -2312,8 +2335,9 @@ func TestValidateWorkerVersionSkewAddNodeGroup(t *testing.T) {
 	oldCluster.Spec.KubernetesVersion = kube119
 	oldCluster.Spec.WorkerNodeGroupConfigurations[0].KubernetesVersion = &kube119
 
-	err := newCluster.ValidateUpdate(oldCluster)
+	warnings, err := newCluster.ValidateUpdate(oldCluster)
 	g := NewWithT(t)
+	g.Expect(warnings).To(BeEmpty())
 	g.Expect(err).To(Succeed())
 }
 
@@ -2339,7 +2363,8 @@ func TestValidateWorkerVersionBlockTinkerbell(t *testing.T) {
 	oldCluster.Spec.KubernetesVersion = kube119
 	oldCluster.Spec.WorkerNodeGroupConfigurations[0].KubernetesVersion = &kube119
 
-	err := newCluster.ValidateUpdate(oldCluster)
+	warnings, err := newCluster.ValidateUpdate(oldCluster)
 	g := NewWithT(t)
+	g.Expect(warnings).To(BeEmpty())
 	g.Expect(err).ToNot(BeNil())
 }

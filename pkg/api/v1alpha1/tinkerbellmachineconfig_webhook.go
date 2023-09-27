@@ -25,6 +25,7 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
+	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 )
 
 // log is for logging in this package.
@@ -53,7 +54,7 @@ func (r *TinkerbellMachineConfig) Default() {
 var _ webhook.Validator = &TinkerbellMachineConfig{}
 
 // ValidateCreate implements webhook.Validator so a webhook will be registered for the type.
-func (r *TinkerbellMachineConfig) ValidateCreate() error {
+func (r *TinkerbellMachineConfig) ValidateCreate() (admission.Warnings, error) {
 	tinkerbellmachineconfiglog.Info("validate create", "name", r.Name)
 
 	var allErrs field.ErrorList
@@ -81,7 +82,7 @@ func (r *TinkerbellMachineConfig) ValidateCreate() error {
 }
 
 // ValidateUpdate implements webhook.Validator so a webhook will be registered for the type.
-func (r *TinkerbellMachineConfig) ValidateUpdate(old runtime.Object) error {
+func (r *TinkerbellMachineConfig) ValidateUpdate(old runtime.Object) (admission.Warnings, error) {
 	tinkerbellmachineconfiglog.Info("validate update", "name", r.Name)
 
 	oldTinkerbellMachineConfig, ok := old.(*TinkerbellMachineConfig)
@@ -108,7 +109,7 @@ func (r *TinkerbellMachineConfig) ValidateUpdate(old runtime.Object) error {
 }
 
 // ValidateDelete implements webhook.Validator so a webhook will be registered for the type.
-func (r *TinkerbellMachineConfig) ValidateDelete() error {
+func (r *TinkerbellMachineConfig) ValidateDelete() (admission.Warnings, error) {
 	tinkerbellmachineconfiglog.Info("validate delete", "name", r.Name)
 
 	// TODO(user): fill in your validation logic upon object deletion.

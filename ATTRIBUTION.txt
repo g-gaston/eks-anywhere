@@ -245,7 +245,7 @@ https://github.com/abhay-krishna/cluster-api
 ** sigs.k8s.io/cluster-api-provider-cloudstack; version v0.4.9-rc5.0.20230717222509-0d26a04b661f --
 https://github.com/kubernetes-sigs/cluster-api-provider-cloudstack
 
-** sigs.k8s.io/cluster-api-provider-vsphere/api/v1beta1; version v1.0.1 --
+** sigs.k8s.io/cluster-api-provider-vsphere/apis/v1beta1; version v1.0.1 --
 https://github.com/kubernetes-sigs/cluster-api-provider-vsphere
 
 ** sigs.k8s.io/cluster-api/test/infrastructure/docker/api/v1beta1; version v1.4.2 --

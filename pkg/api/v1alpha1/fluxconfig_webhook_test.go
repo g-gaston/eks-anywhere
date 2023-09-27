@@ -75,7 +75,8 @@ func TestValidateCreateHasValidatedSpec(t *testing.T) {
 	fNew.Spec.Github = &v1alpha1.GithubProviderConfig{}
 
 	f := NewWithT(t)
-	err := fNew.ValidateCreate()
+	warnings, err := fNew.ValidateCreate()
+	f.Expect(warnings).To(BeEmpty())
 
 	f.Expect(apierrors.IsInvalid(err)).To(BeTrue())
 	f.Expect(err).To(MatchError(ContainSubstring("must specify only one provider")))
@@ -90,7 +91,8 @@ func TestValidateUpdateHasValidatedSpec(t *testing.T) {
 	c.Spec.Git = &v1alpha1.GitProviderConfig{}
 
 	f := NewWithT(t)
-	err := c.ValidateUpdate(&fOld)
+	warnings, err := c.ValidateUpdate(&fOld)
+	f.Expect(warnings).To(BeEmpty())
 	f.Expect(apierrors.IsInvalid(err)).To(BeTrue())
 	f.Expect(err).To(MatchError(ContainSubstring("must specify only one provider")))
 }

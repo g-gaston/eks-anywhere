@@ -10,6 +10,7 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
+	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 
 	"github.com/aws/eks-anywhere/pkg/features"
 )
@@ -41,7 +42,7 @@ func (r *VSphereMachineConfig) Default() {
 var _ webhook.Validator = &VSphereMachineConfig{}
 
 // ValidateCreate implements webhook.Validator so a webhook will be registered for the type.
-func (r *VSphereMachineConfig) ValidateCreate() error {
+func (r *VSphereMachineConfig) ValidateCreate() (admission.Warnings, error) {
 	vspheremachineconfiglog.Info("validate create", "name", r.Name)
 
 	if err := r.ValidateHasTemplate(); err != nil {
@@ -65,7 +66,7 @@ func (r *VSphereMachineConfig) ValidateCreate() error {
 }
 
 // ValidateUpdate implements webhook.Validator so a webhook will be registered for the type.
-func (r *VSphereMachineConfig) ValidateUpdate(old runtime.Object) error {
+func (r *VSphereMachineConfig) ValidateUpdate(old runtime.Object) (admission.Warnings, error) {
 	vspheremachineconfiglog.Info("validate update", "name", r.Name)
 
 	oldVSphereMachineConfig, ok := old.(*VSphereMachineConfig)
@@ -197,7 +198,7 @@ func validateImmutableFieldsVSphereMachineConfig(new, old *VSphereMachineConfig)
 }
 
 // ValidateDelete implements webhook.Validator so a webhook will be registered for the type.
-func (r *VSphereMachineConfig) ValidateDelete() error {
+func (r *VSphereMachineConfig) ValidateDelete() (admission.Warnings, error) {
 	vspheremachineconfiglog.Info("validate delete", "name", r.Name)
 
 	return nil

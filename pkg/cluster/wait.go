@@ -17,6 +17,23 @@ import (
 // or the retrier timeouts. If observedGeneration is not equal to generation,
 // the condition is considered false regardless of the status value.
 func WaitForCondition(ctx context.Context, client kubernetes.Reader, cluster *anywherev1.Cluster, retrier *retrier.Retrier, conditionType anywherev1.ConditionType) error {
+	return WaitFor(ctx, client, cluster, retrier, func(c *anywherev1.Cluster) error {
+		condition := conditions.Get(c, conditionType)
+		if condition == nil {
+			return fmt.Errorf("cluster doesn't yet have condition %s", conditionType)
+		}
+
+		if condition.Status != corev1.ConditionTrue {
+			return fmt.Errorf("cluster condition %s is %s: %s", conditionType, condition.Status, condition.Message)
+		}
+
+		return nil
+	})
+}
+
+type ClusterMatcher func(*anywherev1.Cluster) error
+
+func WaitFor(ctx context.Context, client kubernetes.Reader, cluster *anywherev1.Cluster, retrier *retrier.Retrier, match ClusterMatcher) error {
 	return retrier.Retry(func() error {
 		c := &anywherev1.Cluster{}
 
@@ -35,15 +52,6 @@ func WaitForCondition(ctx context.Context, client kubernetes.Reader, cluster *an
 			return fmt.Errorf("cluster generation (%d) and observedGeneration (%d) differ", generation, observedGeneration)
 		}
 
-		condition := conditions.Get(c, conditionType)
-		if condition == nil {
-			return fmt.Errorf("cluster doesn't yet have condition %s", conditionType)
-		}
-
-		if condition.Status != corev1.ConditionTrue {
-			return fmt.Errorf("cluster condition %s is %s: %s", conditionType, condition.Status, condition.Message)
-		}
-
-		return nil
+		return match(c)
 	})
 }
