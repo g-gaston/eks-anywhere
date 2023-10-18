@@ -1,4 +1,4 @@
-@startuml controller-manager-deployment
+@startuml in-place-eks-a-container
 !include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Container.puml
 
 title Container diagram for EKS-A In-place upgrades
