@@ -184,14 +184,76 @@ kcp->>apiserver: Mark KCP as Ready
 deactivate kcp
 ```
 
-### EKS-A in-place upgrade strategy implementation
-TODO: 
-- use a controller and CRDs for the strategy.
-	- 3 CRD/controllers: `ControlPlaneUpgrade`, `MachineDeploymentUpgrade` and `NodeUpgrade`.
-	- Maybe controller for `NodeUpgrade`, maybe not. If yes, we need to pass the PodSpec so we can have different processes for CP and workers.
-- Use priviledged pods with nsenter that are scheduled in the target nodes. Separate kubeadm steps in initContainers so the process can we followed easier.
+### EKS-A in-place upgrade strategy
+Note: (almost) everything proposed in this section is decoupled from the CAPI work. The folks working on implementing the part of the system described in this section could change/undo any of the decisions outlined below if new information comes up during implementation. This doc will need to be retroactively updated in that case.
 
-TODO: maybe add C4 system diagram with mermaid.
+#### External strategy Runtime Extension
+CAPI provides the tooling to register and run a Go HTTP server that implements a particular Runtime Extension. We will use this, serving both the CP and MachineDeployment external strategy Hooks from the EKS-A controller manager container.
+
+These Hooks will only be responsible for accepting/rejecting the upgrade request (by looking at the computed difference between current and new machine spec) and creating the corresponding CRDs to "trigger" a CP/workers in-place upgrade.
+
+#### Upgrading Control Planes
+We will have `ControlPlaneKubeadmUpgrade` CRD and implement a controller to reconcile it. This controller will be responsible for orchestrating the upgrade of the different CP nodes: controlling the node sequence, define the upgrade steps required for each node and updating the CAPI objects (`Machine`, `KubeadmConfig`, etc.) after each node is upgraded.
+- The controller will upgrade CP nodes one by one.
+- The upgrade actions will be defined as container specs that will be passed to the `NodeUpgrade` to execute and track.
+
+This `ControlPlaneKubeadmUpgrade` should contain information about the new component versions that will be installed in the nodes and a status that allows to track the progress of the upgrade. Example:
+
+```go
+type ControlPlaneUpgradeSpec struct {
+	Cluster                corev1.ObjectReference   `json:"cluster"`
+	ControlPlane           corev1.ObjectReference   `json:"controlPlane"`
+	MachinesRequireUpgrade []corev1.ObjectReference `json:"machinesRequireUpgrade"`
+	KubernetesVersion      string                   `json:"kubernetesVersion"`
+	KubeletVersion         string                   `json:"kubeletVersion"`
+	EtcdVersion            *string                  `json:"etcdVersion,omitempty"`
+	CoreDNSVersion         *string                  `json:"coreDNSVersion,omitempty"`
+	KubeadmClusterConfig   string                   `json:"kubeadmClusterConfig"`
+}
+
+type ControlPlaneUpgradeStatus struct {
+	RequireUpgrade int64 `json:"requireUpgrade"`
+	Upgraded       int64 `json:"upgraded"`
+	Ready          bool  `json:"ready"`
+}
+```
+
+#### Upgrading MachineDeployments
+We will have `WorkersKubeadmUpgrade` CRD and implement a controller to reconcile it. This controller will be responsible for orchestrating the upgrade of the nodes: controlling the node sequence, define the upgrade steps required for each node and updating the CAPI objects (`Machine`, `KubeadmConfig`, etc.) after each node is upgraded.
+- The controller will upgrade worker nodes in the same `WorkersKubeadmUpgrade` one by one.
+- The upgrade actions will be defined as container specs that will be passed to the `NodeUpgrade` to execute and track.
+
+This `WorkersKubeadmUpgrade` should contain information about the new component versions that will be installed in the nodes and a status that allows to track the progress of the upgrade.
+
+#### Upgrading nodes
+We will have `NodeKubeadmUpgrade` CRD and implement a controller to reconcile it. This controller will be responsible from scheduling a pod on the specified workload cluster node with the specified containers as `initContainers`. It will track their progress and bubble up any error/success to the `NodeKubeadmUpgrade` status. The status should also allow to track the progress of the different upgrade "steps".
+
+![in-place-container-diagram](images/in-place-upgrades-container.png)
+
+#### Running the upgrade process on nodes
+The node upgrade we will perform, although different depending on the type of node, can be generalized to these steps:
+1. Copy new component binaries to host.
+2. Upgrade containerd.
+3. Upgrade CNI plugins.
+4. Update kubeadm binary and run the `kubeadm upgrade` process.
+5. Drain the node.
+6. Update `kubectl`/`kubelet` binaries and restart the kubelet service.
+7. Uncordon de node.
+
+Each of this steps will be executed as an init container in a privileged pod. For the commands that need to run "on the host", we will use `nsenter` to execute them in the host namespace.
+
+Draining and uncordonning the code could run in either, the container or the host namespace. However, we will run it in the container namespace to be able to use the injected credentials for the `ServiceAccount`. This way we don't depend on having a kubeconfig in the host disk. This not only limits the rbac permissions that the `kubectl` command will use, but it's specially useful for worker nodes, since this don't have a kubeconfig with enough permissions to perform these actions (CP nodes have an admin kubeconfig).
+
+In order to codify the logic of each step (the ones that require logic, like `kubeadm upgrade`), we will build a single go binary with multiple commands (one per step). The `ControlPlaneKubeadmUpgrade` and `WorkersKubeadmUpgrade` will just reference these commands when building the init containers spec.
+
+#### The upgrader container image
+We will build an image containing everything required for all upgrade steps:
+- K8s component binaries: `containerd`, CNI plugins, `kubeadm`, `kubelet`, etc.
+- `nsenter`
+- `cp` (to copy binaries to host).
+- Our custom upgrade Go binary.
+
+This way, the only dependency for air-gapped environments is to have container image registry (the same dependency we have today). The tradeoff is we need to build one image per eks-a + eks-d combo we support.
 
 ## Customer experience
 TODO: talk about default strategy and EKS-A API changes. Talk about how to debug failures: look to CRDs, pod logs, etc.
