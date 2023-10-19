@@ -35,7 +35,7 @@ The second half defines how EKS-A would leverage and implement such pluggable st
 ### High level view
 **TLDR**: CAPI still decides when an upgrade is required but it delegates to an external component the work to perform it. After the upgrade process is completed, `Machine` (and maybe `BootstrapConfig`) objects are updated to reflect the k8s component level changes.
 
-Both KCP and MachineDeployments controllers follow a similar patter around upgrades: they first detect if an upgrade is required and then they read the configured strategy to follow one process or another. We can find a configurable upgrade strategy field in the [KCP](https://doc.crds.dev/github.com/kubernetes-sigs/cluster-api/controlplane.cluster.x-k8s.io/KubeadmControlPlane/v1beta1@v1.5.2#spec-rolloutStrategy-type) and [MachineDeployment](https://doc.crds.dev/github.com/kubernetes-sigs/cluster-api/cluster.x-k8s.io/MachineDeployment/v1beta1@v1.5.2) objects. The strategy is supposed to configure “how” machines are upgraded.
+Both KCP and MachineDeployments controllers follow a similar pattern around upgrades: they first detect if an upgrade is required and then they read the configured strategy to follow one process or another. We can find a configurable upgrade strategy field in the [KCP](https://doc.crds.dev/github.com/kubernetes-sigs/cluster-api/controlplane.cluster.x-k8s.io/KubeadmControlPlane/v1beta1@v1.5.2#spec-rolloutStrategy-type) and [MachineDeployment](https://doc.crds.dev/github.com/kubernetes-sigs/cluster-api/cluster.x-k8s.io/MachineDeployment/v1beta1@v1.5.2) objects. The strategy is supposed to configure “how” machines are upgraded.
 
 Given CAPI's infrastructure immutability constraints, this is currently scoped to just machine replacement (the only available strategy is “rolling update”). What if in-place upgrades can be just another strategy? That fits the current API and abstractions quite well. Moreover, what if the logic to follow by the strategy was implemented outside of the core CAPI controllers?
 
@@ -43,9 +43,9 @@ Given CAPI's infrastructure immutability constraints, this is currently scoped t
 
 This solution decouples the core CAPI controllers from the individual possible strategies that can be followed for an upgrade. CAPI users (us) could choose to implement their own strategy while leveraging the capabilities of the existing controllers. In addition, they could iterate on those strategies without requiring changes in CAPI.
 
-The only thing that would change from the current UX configuring the KCP/MachineDeployment is a `strategy: external`. This solution allows to leverage the existing logic in these two controllers to determine when changes are required, so this doesn't need to be replicated elsewhere. Once the need for changes has been determined, these controllers will hit the registered hooks informing of the selected Machines and the computed difference between current Machine and desired Machine. The external strategy implementers would take over the process and perform the necessary actions.
+The only thing that would change from the current UX is configuring the KCP/MachineDeployment with a `strategy: external`. This solution allows to leverage the existing logic in these two controllers to determine when changes are required, so this doesn't need to be replicated elsewhere. Once the need for changes has been determined, these controllers will hit the registered the strategy implementers, informing of the selected Machines and the computed difference between current Machine and desired Machine. The external strategy implementers would take over the process and perform the necessary actions.
 
-Note: the external external strategy pattern is not tied to just in-place upgrades: it can be used to change the machine upgrade order, fine control the timing of each machine upgrade, etc. On EKS-A we will just implement an strategy that upgrades machines in place.
+Note: the external external strategy pattern is not tied to just in-place upgrades: it could be used to change the machine upgrade order, fine control the timing of each machine upgrade, etc. On EKS-A we will just implement an strategy that upgrades machines in place.
 
 The following diagram presents the same idea as above but with a concrete example for the KCP and in a different format, just as additional clarification.
 
@@ -94,11 +94,11 @@ Following the first diagram, all points marked with a ❓:
 
 ### CAPI external strategy contract
 #### Communication pattern
-There two obvious options: webhooks or the CRDs + controller model. The tradeoffs are mostly the same as in any other system, so this doc won't enumerate them.
+There are two obvious options: webhooks or the CRDs + controller model. The tradeoffs are mostly the same as in any other system, so this doc won't enumerate them.
 
 CAPI already already uses both:
 - CRD/contract based extension for infra, CP and bootstrap providers. These are "plug-in, swappable low-level components" (quoting the Runtime SDK proposal)
-- Webhooks for the [Runtime SDK](https://github.com/kubernetes-sigs/cluster-api/blob/main/docs/proposals/20220221-runtime-SDK.md). The Runtime Hooks were design to enable "systems, products and services built on top of Cluster API that require strict interactions with the lifecycle of Clusters, but at the same time they do not want to replace any low-level components in Cluster API, because they happily benefit from all the features available in the existing providers (built on top vs plug-in/swap)".
+- Webhooks for the [Runtime SDK](https://github.com/kubernetes-sigs/cluster-api/blob/main/docs/proposals/20220221-runtime-SDK.md). The Runtime Hooks were designed to enable "systems, products and services built on top of Cluster API that require strict interactions with the lifecycle of Clusters, but at the same time they do not want to replace any low-level components in Cluster API, because they happily benefit from all the features available in the existing providers (built on top vs plug-in/swap)".
 
 A external upgrade strategy seems to fit well in both categories: it's both a *plug-in, swappable low-level component* and it also *does not want to replace any low-level components in Cluster API, because it happily benefits from all the features available in the existing providers*.
 
