@@ -2,7 +2,9 @@ package reconciler_test
 
 import (
 	"context"
+	"fmt"
 	"testing"
+	"time"
 
 	"github.com/golang/mock/gomock"
 	. "github.com/onsi/gomega"
@@ -20,6 +22,7 @@ import (
 	"github.com/aws/eks-anywhere/internal/test/envtest"
 	anywherev1 "github.com/aws/eks-anywhere/pkg/api/v1alpha1"
 	clusterspec "github.com/aws/eks-anywhere/pkg/cluster"
+	"github.com/aws/eks-anywhere/pkg/clusterapi"
 	"github.com/aws/eks-anywhere/pkg/constants"
 	"github.com/aws/eks-anywhere/pkg/controller"
 	"github.com/aws/eks-anywhere/pkg/controller/clientutil"
@@ -37,10 +40,27 @@ func TestReconcilerReconcileSuccess(t *testing.T) {
 	tt := newReconcilerTest(t)
 	// We want to check that the cluster status is cleaned up if validations are passed
 	tt.cluster.SetFailure(anywherev1.FailureReasonType("InvalidCluster"), "invalid cluster")
-	capiCluster := test.CAPICluster(func(c *clusterv1.Cluster) {
-		c.Name = tt.cluster.Name
+	kcp := test.KubeadmControlPlane(func(kcp *controlplanev1.KubeadmControlPlane) {
+		kcp.Name = tt.cluster.Name
+		kcp.Spec = controlplanev1.KubeadmControlPlaneSpec{
+			MachineTemplate: controlplanev1.KubeadmControlPlaneMachineTemplate{
+				InfrastructureRef: corev1.ObjectReference{
+					Name: fmt.Sprintf("%s-control-plane-1", tt.cluster.Name),
+				},
+			},
+		}
+		kcp.Status = controlplanev1.KubeadmControlPlaneStatus{
+			Conditions: clusterv1.Conditions{
+				{
+					Type:               clusterapi.ReadyCondition,
+					Status:             corev1.ConditionTrue,
+					LastTransitionTime: metav1.NewTime(time.Now()),
+				},
+			},
+			ObservedGeneration: 2,
+		}
 	})
-	tt.eksaSupportObjs = append(tt.eksaSupportObjs, capiCluster)
+	tt.eksaSupportObjs = append(tt.eksaSupportObjs, kcp)
 	tt.createAllObjs()
 
 	logger := test.NewNullLogger()
@@ -170,10 +190,7 @@ func TestReconcilerValidateMachineConfigsMachineConfigNotValidated(t *testing.T)
 
 func TestReconcilerReconcileWorkers(t *testing.T) {
 	tt := newReconcilerTest(t)
-	capiCluster := test.CAPICluster(func(c *clusterv1.Cluster) {
-		c.Name = tt.cluster.Name
-	})
-	tt.eksaSupportObjs = append(tt.eksaSupportObjs, capiCluster)
+	tt.eksaSupportObjs = append(tt.eksaSupportObjs)
 	tt.createAllObjs()
 
 	result, err := tt.reconciler().ReconcileWorkers(tt.ctx, test.NewNullLogger(), tt.buildSpec())
@@ -223,10 +240,26 @@ func TestReconcilerReconcileControlPlane(t *testing.T) {
 
 func TestReconcilerCheckControlPlaneReadyItIsReady(t *testing.T) {
 	tt := newReconcilerTest(t)
-	capiCluster := test.CAPICluster(func(c *clusterv1.Cluster) {
-		c.Name = tt.cluster.Name
+	kcp := test.KubeadmControlPlane(func(kcp *controlplanev1.KubeadmControlPlane) {
+		kcp.Name = tt.cluster.Name
+		kcp.Spec = controlplanev1.KubeadmControlPlaneSpec{
+			MachineTemplate: controlplanev1.KubeadmControlPlaneMachineTemplate{
+				InfrastructureRef: corev1.ObjectReference{
+					Name: fmt.Sprintf("%s-control-plane-1", tt.cluster.Name),
+				},
+			},
+		}
+		kcp.Status = controlplanev1.KubeadmControlPlaneStatus{
+			Conditions: clusterv1.Conditions{
+				{
+					Type:               clusterapi.ReadyCondition,
+					Status:             corev1.ConditionTrue,
+					LastTransitionTime: metav1.NewTime(time.Now()),
+				},
+			},
+		}
 	})
-	tt.eksaSupportObjs = append(tt.eksaSupportObjs, capiCluster)
+	tt.eksaSupportObjs = append(tt.eksaSupportObjs, kcp)
 	tt.withFakeClient()
 
 	result, err := tt.reconciler().CheckControlPlaneReady(tt.ctx, test.NewNullLogger(), tt.buildSpec())
