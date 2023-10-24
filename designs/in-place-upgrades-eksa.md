@@ -1,0 +1,1 @@
+# External upgrade strategy for in-place upgrades
