@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"math"
+	"strings"
 	"testing"
 	"time"
 
@@ -74,7 +75,7 @@ func TestReconcilerReconcileSuccess(t *testing.T) {
 	spec := tt.buildSpec()
 	tt.ipValidator.EXPECT().ValidateControlPlaneIP(tt.ctx, logger, tt.buildSpec()).Return(controller.Result{}, nil)
 	tt.remoteClientRegistry.EXPECT().GetClient(
-		tt.ctx, client.ObjectKey{Name: "workload-cluster", Namespace: constants.EksaSystemNamespace},
+		tt.ctx, client.ObjectKey{Name: tt.cluster.Name, Namespace: constants.EksaSystemNamespace},
 	).Return(remoteClient, nil).Times(1)
 
 	tt.cniReconciler.EXPECT().Reconcile(tt.ctx, logger, remoteClient, spec)
@@ -358,7 +359,7 @@ func TestReconcileCNISuccess(t *testing.T) {
 	spec := tt.buildSpec()
 
 	tt.remoteClientRegistry.EXPECT().GetClient(
-		tt.ctx, client.ObjectKey{Name: "workload-cluster", Namespace: "eksa-system"},
+		tt.ctx, client.ObjectKey{Name: tt.cluster.Name, Namespace: "eksa-system"},
 	).Return(remoteClient, nil)
 	tt.cniReconciler.EXPECT().Reconcile(tt.ctx, logger, remoteClient, spec)
 
@@ -379,7 +380,7 @@ func TestReconcileCNIErrorClientRegistry(t *testing.T) {
 	spec := tt.buildSpec()
 
 	tt.remoteClientRegistry.EXPECT().GetClient(
-		tt.ctx, client.ObjectKey{Name: "workload-cluster", Namespace: "eksa-system"},
+		tt.ctx, client.ObjectKey{Name: tt.cluster.Name, Namespace: "eksa-system"},
 	).Return(nil, errors.New("building client"))
 
 	result, err := tt.reconciler().ReconcileCNI(tt.ctx, logger, spec)
@@ -631,7 +632,7 @@ func newReconcilerTest(t testing.TB) *reconcilerTest {
 	})
 
 	cluster := cloudstackCluster(func(c *anywherev1.Cluster) {
-		c.Name = "workload-cluster"
+		c.Name = strings.ToLower(t.Name())
 		c.Spec.ManagementCluster = anywherev1.ManagementCluster{
 			Name: managementCluster.Name,
 		}
@@ -725,13 +726,13 @@ func (tt *reconcilerTest) cleanup() {
 	tt.DeleteAllOfAndWait(tt.ctx, &controlplanev1.KubeadmControlPlane{})
 	tt.DeleteAndWait(tt.ctx, &cloudstackv1.CloudStackMachineTemplate{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      "workload-cluster-etcd-1",
+			Name:      tt.cluster.Name + "-etcd-1",
 			Namespace: "eksa-system",
 		},
 	})
 	tt.DeleteAndWait(tt.ctx, &etcdv1.EtcdadmCluster{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      "workload-cluster-etcd",
+			Name:      tt.cluster.Name + "-etcd",
 			Namespace: "eksa-system",
 		},
 	})

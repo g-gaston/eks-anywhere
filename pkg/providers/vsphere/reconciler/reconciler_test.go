@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"strings"
 	"testing"
 	"time"
 
@@ -83,7 +84,7 @@ func TestReconcilerReconcileSuccess(t *testing.T) {
 	tt.govcClient.EXPECT().ListTags(tt.ctx).Return([]executables.Tag{}, nil)
 
 	tt.remoteClientRegistry.EXPECT().GetClient(
-		tt.ctx, client.ObjectKey{Name: "workload-cluster", Namespace: "eksa-system"},
+		tt.ctx, client.ObjectKey{Name: tt.cluster.Name, Namespace: "eksa-system"},
 	).Return(remoteClient, nil).Times(1)
 	tt.cniReconciler.EXPECT().Reconcile(tt.ctx, logger, remoteClient, tt.buildSpec())
 
@@ -227,7 +228,9 @@ func TestReconcilerControlPlaneIsNotReady(t *testing.T) {
 
 func TestReconcilerReconcileWorkersSuccess(t *testing.T) {
 	tt := newReconcilerTest(t)
-	tt.eksaSupportObjs = append(tt.eksaSupportObjs)
+	tt.eksaSupportObjs = append(tt.eksaSupportObjs, test.CAPICluster(func(c *clusterv1.Cluster) {
+		c.Name = tt.cluster.Name
+	}))
 	tt.createAllObjs()
 
 	result, err := tt.reconciler().ReconcileWorkers(tt.ctx, test.NewNullLogger(), tt.buildSpec())
@@ -277,7 +280,7 @@ func TestReconcileCNISuccess(t *testing.T) {
 	spec := tt.buildSpec()
 
 	tt.remoteClientRegistry.EXPECT().GetClient(
-		tt.ctx, client.ObjectKey{Name: "workload-cluster", Namespace: "eksa-system"},
+		tt.ctx, client.ObjectKey{Name: tt.cluster.Name, Namespace: "eksa-system"},
 	).Return(remoteClient, nil)
 	tt.cniReconciler.EXPECT().Reconcile(tt.ctx, logger, remoteClient, spec)
 
@@ -297,7 +300,7 @@ func TestReconcileCNIErrorClientRegistry(t *testing.T) {
 	spec := tt.buildSpec()
 
 	tt.remoteClientRegistry.EXPECT().GetClient(
-		tt.ctx, client.ObjectKey{Name: "workload-cluster", Namespace: "eksa-system"},
+		tt.ctx, client.ObjectKey{Name: tt.cluster.Name, Namespace: "eksa-system"},
 	).Return(nil, errors.New("building client"))
 
 	result, err := tt.reconciler().ReconcileCNI(tt.ctx, logger, spec)
@@ -322,7 +325,7 @@ func TestReconcilerReconcileControlPlaneSuccess(t *testing.T) {
 	tt.ShouldEventuallyExist(tt.ctx,
 		&addonsv1.ClusterResourceSet{
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      "workload-cluster-cpi",
+				Name:      tt.cluster.Name + "-cpi",
 				Namespace: "eksa-system",
 			},
 		},
@@ -331,7 +334,7 @@ func TestReconcilerReconcileControlPlaneSuccess(t *testing.T) {
 	tt.ShouldEventuallyExist(tt.ctx,
 		&controlplanev1.KubeadmControlPlane{
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      "workload-cluster",
+				Name:      tt.cluster.Name,
 				Namespace: "eksa-system",
 			},
 		},
@@ -340,20 +343,20 @@ func TestReconcilerReconcileControlPlaneSuccess(t *testing.T) {
 	tt.ShouldEventuallyExist(tt.ctx,
 		&vspherev1.VSphereMachineTemplate{
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      "workload-cluster-control-plane-1",
+				Name:      tt.cluster.Name + "-control-plane-1",
 				Namespace: "eksa-system",
 			},
 		},
 	)
 
 	capiCluster := test.CAPICluster(func(c *clusterv1.Cluster) {
-		c.Name = "workload-cluster"
+		c.Name = tt.cluster.Name
 	})
 	tt.ShouldEventuallyExist(tt.ctx, capiCluster)
 
-	tt.ShouldEventuallyExist(tt.ctx, &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: "workload-cluster-cloud-controller-manager", Namespace: "eksa-system"}})
-	tt.ShouldEventuallyExist(tt.ctx, &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: "workload-cluster-cloud-provider-vsphere-credentials", Namespace: "eksa-system"}})
-	tt.ShouldEventuallyExist(tt.ctx, &corev1.ConfigMap{ObjectMeta: metav1.ObjectMeta{Name: "workload-cluster-cpi-manifests", Namespace: "eksa-system"}})
+	tt.ShouldEventuallyExist(tt.ctx, &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: tt.cluster.Name + "-cloud-controller-manager", Namespace: "eksa-system"}})
+	tt.ShouldEventuallyExist(tt.ctx, &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: tt.cluster.Name + "-cloud-provider-vsphere-credentials", Namespace: "eksa-system"}})
+	tt.ShouldEventuallyExist(tt.ctx, &corev1.ConfigMap{ObjectMeta: metav1.ObjectMeta{Name: tt.cluster.Name + "-cpi-manifests", Namespace: "eksa-system"}})
 }
 
 type reconcilerTest struct {
@@ -422,7 +425,7 @@ func newReconcilerTest(t testing.TB) *reconcilerTest {
 	})
 
 	cluster := test.Cluster(func(c *anywherev1.Cluster) {
-		c.Name = "workload-cluster"
+		c.Name = strings.ToLower(t.Name())
 		c.Namespace = clusterNamespace
 		c.Spec.ManagementCluster = anywherev1.ManagementCluster{
 			Name: managementCluster.Name,
