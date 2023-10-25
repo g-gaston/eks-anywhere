@@ -23,7 +23,6 @@ The goal is to bring enough clarity to the table that a general solution can be 
 ## Overview of the Solution
 **TLDR**: the eks-a controller manager will host the two webhook servers and implement 3 new controllers that will orchestrate the upgrade. These controllers will schedule privilege pods on each node to be upgraded, that will execute the upgrade logic as a sequence of containers.
 
-**Note**: (almost) everything proposed in this section is decoupled from the CAPI work. The folks working on implementing the part of the system described in this section could change/undo any of the decisions outlined below if new information comes up during implementation. This doc will need to be retroactively updated in that case.
 ### High level view
 Following the CAPI external upgrade strategy idea, we can start with the following diagram.
 
@@ -68,9 +67,16 @@ type ControlPlaneUpgradeStatus struct {
 #### Validating the upgrade request
 This first iteration of EKS-A in-place upgrades won't implement the full spectrum of changes that can be requested through the CAPI API. We will focus on kubernetes version upgrades, which requires updates to the k8s version, CoreDNS version, kube-proxy version and etcd version fields (this fields are in the KCP and MachineDeployment and are reflected in the Machine and KubeadmConfig). Any other field change will end up in a rejected upgrade request. For rejected requests, we could configure CAPI to follow a fallback strategy, or just surface an error. TBD: follow up will be needed by implementers.
 
-However, even for this limited set of allowed changes, there is still a challenge. What happen if a node is taken down and CAPI replaces it? It will create a new one using the template configured in the infra (Tinkerbell) machine template. This will still be pointing to the old one (remember we only allowed updates to component version fields), which means this node will come up with an old Kubernetes version.
+However, even for this limited set of allowed changes, there is still a challenge. What happens if a node is taken down and CAPI replaces it? It will create a new one using the template configured in the infra (Tinkerbell) machine template. This will still be pointing to the old one (remember we only allowed updates to component version fields), which means this node will come up with an old Kubernetes version. This might or might not work depending on the version skew (a patch version skew will work, a multiple minor version skew might not).
 
-TODO: continue writing this section.
+There are a few ways to go about this:
+1. Allow changes to the infra machine template template field. The in-place upgrade strategy will accept requests that change kubernetes component versions and the template, updating the infra machine object after the upgrade to reflect this change. These presents a couple challenges:
+   1. The infra machine will reflect a template that wasn't really used for that specific machine. Any new updates/changes baked into the template that weren't present in the previous one will be missing in this machine, which can confuse operators looking to troubleshoot something.
+   2. Some infra machines might be immutable. This doesn't include `TinkerbellMachine` so for this baremetal implementation this pattern works. But it might not work in the future for other providers.
+2. Keep the infra machine template unchanged but perform an in-place upgrade on any new machine that is brought up with the old template. This requires the node to come up first, which means it only solves the problem for a version skew between the cluster and the template allowed by kubeadm. In addition, it requires a way to signal to our new controllers that this new machines require an in-place upgrade.
+3. Make CAPI ignore differences between the infra machine template for a particular node group (CP or `MachineDeployment`) and the template in the infra machine object. This way, we could update the infra machine template so new machines get created with the new template but we avoid the need of having to patch the existing infra machine objects. This will require some changes in the CAPI API and/or contracts so KCP and MachineDeployment controllers handle this scenario appropriately.
+
+More thought is required in this area so it will require a follow up.
 
 ### Upgrading MachineDeployments
 We will have a `WorkersKubeadmUpgrade` CRD and implement a controller to reconcile it. This controller will be responsible for orchestrating the upgrade of the worker nodes: controlling the node sequence, define the upgrade steps required for each node and updating the CAPI objects (`Machine`, `KubeadmConfig`, etc.) after each node is upgraded.
@@ -96,7 +102,7 @@ The node upgrade process we need to perform, although different depending on the
 6. Update `kubectl`/`kubelet` binaries and restart the kubelet service.
 7. Uncordon de node.
 
-Each of this steps will be executed as an init container in a privileged pod. For the commands that need to run "on the host", we will use `nsenter` to execute them in the host namespace.
+Each of this steps will be executed as an init container in a privileged pod. For the commands that need to run "on the host", we will use `nsenter` to execute them in the host namespace. All these steps will be idempotent, so the full pod can be recreated and execute all the containers from the start or only a subset of them if required.
 
 Draining and uncordoning the node could run in either the container or the host namespace. However, we will run it in the container namespace to be able to leverage the injected credentials for the `ServiceAccount`. This way we don't depend on having a kubeconfig in the host disk. This not only allows us to easily limit the rbac permissions that the `kubectl` command will use, but it's specially useful for worker nodes, since these don't have a kubeconfig with enough permissions to perform these actions (CP nodes have an admin kubeconfig).
 
@@ -121,19 +127,72 @@ This way, the only dependency for air-gapped environments is to have an availabl
 We will maintain a mapping inside the cluster (using a `ConfiMap`) to go from eks-d version to upgrader image. This `ConfigMap` will be updated when the management cluster components are updated (when a new Bundle is made available). The information will be included in the Bundles manifest and just extracted and simplified so the in place upgrade controllers don't depend on the full EKS-A Bundle.
 
 ## Customer experience
-TODO: talk about default strategy and EKS-A API changes. Talk about how to debug failures: inspect CRDs, pod logs, etc.
+### API
+In-place upgrades will be an option for baremetal clusters and the rolling update will remain the default upgrade strategy. This means users need to be able to configure this through our cluster spec. Ideally, this behavior should be configurable per node group: CP and individual worker node groups.
+
+We might also want to allow users to configure a fallback strategy to rolling update in case the requested changes are not supported by in-place upgrades or to not have a fallback and just fail.
+
+This is only shown as an example, and API change proposal (no need for a doc, just propose the changes to the team) will be needed here.
+
+```yaml
+apiVersion: anywhere.eks.amazonaws.com/v1alpha1
+kind: Cluster
+metadata:
+  name: my-cluster
+spec:
+  eksaVersion: "0.19.0"
+  controlPlaneConfiguration:
+    count: 3
+    machineGroupRef:
+      kind: TinkerbellMachineConfig
+      name: my-cluster-cp
+    upgradeRolloutStrategy:
+      type: InPlace
+  datacenterRef:
+    kind: TinkerbellDatacenterConfig
+    name: my-cluster-dc
+  workerNodeGroupConfigurations:
+  - name: md-0
+    count: 3
+    machineGroupRef:
+      kind: TinkerbellMachineConfig
+      name: my-cluster-worker-1
+    upgradeRolloutStrategy:
+      type: InPlace
+```
+
+### Observability
+
+The EKS-A cluster status should reflect the upgrade process as for any other upgrade, with the message for `ControlPlaneReady` and `WorkersReady` describing the reason why they are not ready. However, users might need a more granular insight in the process, both for slow upgrades and for troubleshooting.
+
+The `ControlPlaneKubeadmUpgrade` and `WorkersKubeadmUpgrade` will reflect in their status the number of nodes to upgrade and how many have been upgraded. In addition, they will bubble up errors that happen for any of the node upgrades they control.
+
+In addition, `NodeKubeadmUpgrade` will reflect in the status any error that occurs during the upgrade, indicating the step at which it failed. It will also reflect the steps that have been completes successfully. If there is an error and the user needs to access the logs, they can just use `kubectl logs` for the failed container. Once the issue is identified and fixed, they can delete the pod adn our controller will recreate them, restarting the upgrade process.
+
+The upgrader pod won't contain sh, so user won't be able to obtain a shell with it. If interactive debugging is required, they can always use a different image or use SSH access directly on the node.
 
 ## Security
-TODO: 
-talk about privileged containers and the use of nsenter.
-talk about mitigations:
-- upgrader minimal image
-- image scanning
-- go binary vulnerability scanning
+
+This proposal doesn't drastically change the rbac of our controller, it just adds permissions for the new CRDs we will own and patch permission for `Machine` and `KubeadmConfig`. Given it already had permissions to create this machines though higher level entities, this does't seem like a dangerous change.
+
+Although true that the EKS-A controller will now be creating pods in the workload clusters, it already had admin permissions on them due to having access to the CAPI kubeconfig secret. So this is not a big swift either.
+
+However, the use of privileged containers, specially with an image containing `nsenter`, entails some risks. If an attacker were to obtain control of any of these containers while they are running (they won't stay running forever since they exit on success/failure and are never restarted), they would obtain control of the host machine. For a CP machine, this means being admin in the cluster and having access to the raw tcd data.
+
+In order to mitigate this risk we will follow the following good practices:
+- Make the upgrader image minimal in surface. We will only include whatever is strictly necessary as enumerated in a previous section.
+- Perform automated image scanning on the upgrader image.
+- Perform automated vulnerability scanning on the upgrader binary's code.
 
 ## Testing
-TODO: nothing special here. This will need their own testing on the CAPI side, mostly a fake strategy to be tested. And the classic unit and e2e testing on the EKS-A side.
 
+All the code needs to be unit/integration tested, including new controllers and the upgrader binary.
+
+In addition, we will add the following scenarios to be tested in our E2E suite:
+- Kubernetes patch version upgrade for all supported k8s versions. This can be done by running an upgrade from the previous minor release, which always contains a different eks-d release. This needs to be tested for both CP and worker nodes.
+- Kubernetes minor version upgrade for all supported k8s version. This needs to be tested for both CP and worker nodes.
+- Fallback scenario where the upgrade changes are not supported by in-place upgrades and it fallback to a rolling update strategy.
+  
 ## Appendix
 ### Technical specifications
 - Support only for Ubuntu.
