@@ -274,7 +274,7 @@ func (p *vsphereProvider) generateSSHKeysIfNotSet(machineConfigs map[string]*v1a
 	return nil
 }
 
-func (p *vsphereProvider) DeleteResources(ctx context.Context, clusterSpec *cluster.Spec) error {
+func (p *vsphereProvider) DeleteResources(ctx context.Context, managementCluster *types.Cluster, clusterSpec *cluster.Spec) error {
 	for _, mc := range clusterSpec.VSphereMachineConfigs {
 		if err := p.providerKubectlClient.DeleteEksaMachineConfig(ctx, eksaVSphereMachineResourceType, mc.Name, clusterSpec.ManagementCluster.KubeconfigFile, mc.Namespace); err != nil {
 			return err
@@ -298,7 +298,7 @@ func (p *vsphereProvider) PostMoveManagementToBootstrap(_ context.Context, _ *ty
 	return nil
 }
 
-func (p *vsphereProvider) SetupAndValidateCreateCluster(ctx context.Context, clusterSpec *cluster.Spec) error {
+func (p *vsphereProvider) SetupAndValidateCreateCluster(ctx context.Context, managementCluster *types.Cluster, clusterSpec *cluster.Spec) error {
 	if err := p.validator.validateUpgradeRolloutStrategy(clusterSpec); err != nil {
 		return fmt.Errorf("failed setup and validations: %v", err)
 	}

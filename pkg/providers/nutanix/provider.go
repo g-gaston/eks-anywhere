@@ -170,7 +170,7 @@ func (p *Provider) generateSSHKeysIfNotSet() error {
 	return nil
 }
 
-func (p *Provider) DeleteResources(ctx context.Context, clusterSpec *cluster.Spec) error {
+func (p *Provider) DeleteResources(ctx context.Context, managementCluster *types.Cluster, clusterSpec *cluster.Spec) error {
 	for _, mc := range p.machineConfigs {
 		if err := p.kubectlClient.DeleteEksaNutanixMachineConfig(ctx, mc.Name, clusterSpec.ManagementCluster.KubeconfigFile, mc.Namespace); err != nil {
 			return err
@@ -184,7 +184,7 @@ func (p *Provider) PostClusterDeleteValidate(ctx context.Context, managementClus
 	return nil
 }
 
-func (p *Provider) SetupAndValidateCreateCluster(ctx context.Context, clusterSpec *cluster.Spec) error {
+func (p *Provider) SetupAndValidateCreateCluster(ctx context.Context, managementCluster *types.Cluster, clusterSpec *cluster.Spec) error {
 	if err := p.validator.validateUpgradeRolloutStrategy(clusterSpec); err != nil {
 		return fmt.Errorf("failed setup and validations: %v", err)
 	}

@@ -360,7 +360,7 @@ func (p *cloudstackProvider) validateClusterSpec(ctx context.Context, clusterSpe
 	return nil
 }
 
-func (p *cloudstackProvider) SetupAndValidateCreateCluster(ctx context.Context, clusterSpec *cluster.Spec) error {
+func (p *cloudstackProvider) SetupAndValidateCreateCluster(ctx context.Context, managementCluster *types.Cluster, clusterSpec *cluster.Spec) error {
 	if err := p.validateEnv(ctx); err != nil {
 		return fmt.Errorf("validating environment variables: %v", err)
 	}
@@ -911,7 +911,7 @@ func (p *cloudstackProvider) UpgradeNeeded(ctx context.Context, newSpec, current
 	return machineConfigsSpecChanged, nil
 }
 
-func (p *cloudstackProvider) DeleteResources(ctx context.Context, clusterSpec *cluster.Spec) error {
+func (p *cloudstackProvider) DeleteResources(ctx context.Context, managementCluster *types.Cluster, clusterSpec *cluster.Spec) error {
 	for _, mc := range clusterSpec.CloudStackMachineConfigs {
 		if err := p.providerKubectlClient.DeleteEksaCloudStackMachineConfig(ctx, mc.Name, clusterSpec.ManagementCluster.KubeconfigFile, mc.Namespace); err != nil {
 			return err

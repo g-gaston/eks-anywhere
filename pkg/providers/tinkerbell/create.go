@@ -102,7 +102,7 @@ func (p *Provider) PostWorkloadInit(ctx context.Context, cluster *types.Cluster,
 	return nil
 }
 
-func (p *Provider) SetupAndValidateCreateCluster(ctx context.Context, clusterSpec *cluster.Spec) error {
+func (p *Provider) SetupAndValidateCreateCluster(ctx context.Context, managementCluster *types.Cluster, clusterSpec *cluster.Spec) error {
 	if clusterSpec.Cluster.Spec.ExternalEtcdConfiguration != nil {
 		return errExternalEtcdUnsupported
 	}

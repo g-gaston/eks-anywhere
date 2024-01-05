@@ -12,7 +12,7 @@ func (p *Provider) SetupAndValidateDeleteCluster(ctx context.Context, cluster *t
 	return nil
 }
 
-func (p *Provider) DeleteResources(ctx context.Context, clusterSpec *cluster.Spec) error {
+func (p *Provider) DeleteResources(ctx context.Context, managementCluster *types.Cluster, clusterSpec *cluster.Spec) error {
 	for _, mc := range p.machineConfigs {
 		if err := p.providerKubectlClient.DeleteEksaMachineConfig(ctx, eksaTinkerbellDatacenterResourceType, mc.Name, clusterSpec.ManagementCluster.KubeconfigFile, mc.Namespace); err != nil {
 			return err

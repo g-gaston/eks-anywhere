@@ -112,7 +112,7 @@ func (p *provider) MachineResourceType() string {
 	return ""
 }
 
-func (p *provider) DeleteResources(_ context.Context, _ *cluster.Spec) error {
+func (p *provider) DeleteResources(_ context.Context, _ *types.Cluster, _ *cluster.Spec) error {
 	return nil
 }
 
@@ -126,7 +126,7 @@ func (p *provider) PostMoveManagementToBootstrap(_ context.Context, _ *types.Clu
 	return nil
 }
 
-func (p *provider) SetupAndValidateCreateCluster(ctx context.Context, clusterSpec *cluster.Spec) error {
+func (p *provider) SetupAndValidateCreateCluster(ctx context.Context, managementCluster *types.Cluster, clusterSpec *cluster.Spec) error {
 	logger.Info("Warning: The docker infrastructure provider is meant for local development and testing only")
 	if err := ValidateControlPlaneEndpoint(clusterSpec); err != nil {
 		return err

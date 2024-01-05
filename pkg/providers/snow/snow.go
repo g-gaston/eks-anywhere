@@ -69,7 +69,7 @@ func (p *SnowProvider) Name() string {
 	return constants.SnowProviderName
 }
 
-func (p *SnowProvider) SetupAndValidateCreateCluster(ctx context.Context, clusterSpec *cluster.Spec) error {
+func (p *SnowProvider) SetupAndValidateCreateCluster(ctx context.Context, managementCluster *types.Cluster, clusterSpec *cluster.Spec) error {
 	if err := p.validateUpgradeRolloutStrategy(clusterSpec); err != nil {
 		return fmt.Errorf("failed setup and validations: %v", err)
 	}
@@ -351,7 +351,7 @@ func (p *SnowProvider) UpgradeNeeded(ctx context.Context, newSpec, oldSpec *clus
 	return p.machineConfigsChanged(ctx, c, newSpec)
 }
 
-func (p *SnowProvider) DeleteResources(ctx context.Context, clusterSpec *cluster.Spec) error {
+func (p *SnowProvider) DeleteResources(ctx context.Context, managementCluster *types.Cluster, clusterSpec *cluster.Spec) error {
 	client := p.kubeUnAuthClient.KubeconfigClient(clusterSpec.ManagementCluster.KubeconfigFile)
 
 	for _, mc := range clusterSpec.SnowMachineConfigs {

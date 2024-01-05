@@ -97,17 +97,17 @@ func (mr *MockProviderMockRecorder) DatacenterResourceType() *gomock.Call {
 }
 
 // DeleteResources mocks base method.
-func (m *MockProvider) DeleteResources(arg0 context.Context, arg1 *cluster.Spec) error {
+func (m *MockProvider) DeleteResources(arg0 context.Context, arg1 *types.Cluster, arg2 *cluster.Spec) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "DeleteResources", arg0, arg1)
+	ret := m.ctrl.Call(m, "DeleteResources", arg0, arg1, arg2)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // DeleteResources indicates an expected call of DeleteResources.
-func (mr *MockProviderMockRecorder) DeleteResources(arg0, arg1 interface{}) *gomock.Call {
+func (mr *MockProviderMockRecorder) DeleteResources(arg0, arg1, arg2 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteResources", reflect.TypeOf((*MockProvider)(nil).DeleteResources), arg0, arg1)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteResources", reflect.TypeOf((*MockProvider)(nil).DeleteResources), arg0, arg1, arg2)
 }
 
 // EnvMap mocks base method.
@@ -368,17 +368,17 @@ func (mr *MockProviderMockRecorder) RunPostControlPlaneUpgrade(arg0, arg1, arg2,
 }
 
 // SetupAndValidateCreateCluster mocks base method.
-func (m *MockProvider) SetupAndValidateCreateCluster(arg0 context.Context, arg1 *cluster.Spec) error {
+func (m *MockProvider) SetupAndValidateCreateCluster(arg0 context.Context, arg1 *types.Cluster, arg2 *cluster.Spec) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "SetupAndValidateCreateCluster", arg0, arg1)
+	ret := m.ctrl.Call(m, "SetupAndValidateCreateCluster", arg0, arg1, arg2)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // SetupAndValidateCreateCluster indicates an expected call of SetupAndValidateCreateCluster.
-func (mr *MockProviderMockRecorder) SetupAndValidateCreateCluster(arg0, arg1 interface{}) *gomock.Call {
+func (mr *MockProviderMockRecorder) SetupAndValidateCreateCluster(arg0, arg1, arg2 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetupAndValidateCreateCluster", reflect.TypeOf((*MockProvider)(nil).SetupAndValidateCreateCluster), arg0, arg1)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetupAndValidateCreateCluster", reflect.TypeOf((*MockProvider)(nil).SetupAndValidateCreateCluster), arg0, arg1, arg2)
 }
 
 // SetupAndValidateDeleteCluster mocks base method.
