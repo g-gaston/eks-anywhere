@@ -42,6 +42,10 @@ type upgradeCoreComponents struct {
 func runUpgradeCoreComponents(ctx context.Context, commandContext *task.CommandContext) error {
 	logger.Info("Upgrading core components")
 
+	logger.Info("Starting management components upgrade")
+	logger.Info("Management cluster: %+v", commandContext.ManagementCluster)
+	logger.Info("Workload cluster: %+v", commandContext.WorkloadCluster)
+
 	err := commandContext.Provider.PreCoreComponentsUpgrade(
 		ctx,
 		commandContext.ManagementCluster,
@@ -59,6 +63,11 @@ func runUpgradeCoreComponents(ctx context.Context, commandContext *task.CommandC
 	}
 	commandContext.UpgradeChangeDiff.Append(changeDiff)
 
+	logger.Info("Before GitOps upgrade")
+	logger.Info("Management cluster: %+v", commandContext.ManagementCluster)
+	logger.Info("Workload cluster: %+v", commandContext.WorkloadCluster)
+
+	return nil
 	if err = commandContext.GitOpsManager.Install(ctx, commandContext.ManagementCluster, commandContext.CurrentClusterSpec, commandContext.ClusterSpec); err != nil {
 		commandContext.SetError(err)
 		return err

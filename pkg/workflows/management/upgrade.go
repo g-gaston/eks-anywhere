@@ -6,6 +6,7 @@ import (
 	"github.com/aws/eks-anywhere/pkg/cluster"
 	"github.com/aws/eks-anywhere/pkg/features"
 	"github.com/aws/eks-anywhere/pkg/filewriter"
+	"github.com/aws/eks-anywhere/pkg/logger"
 	"github.com/aws/eks-anywhere/pkg/providers"
 	"github.com/aws/eks-anywhere/pkg/task"
 	"github.com/aws/eks-anywhere/pkg/types"
@@ -65,6 +66,11 @@ func (c *Upgrade) Run(ctx context.Context, clusterSpec *cluster.Spec, management
 		UpgradeChangeDiff: c.upgradeChangeDiff,
 		ClusterUpgrader:   c.clusterUpgrader,
 	}
+
+	logger.Info("Starting cluster upgrade")
+	logger.Info("Management cluster: %+v", managementCluster)
+	logger.Info("Workload cluster: %+v", commandContext.WorkloadCluster)
+
 	if features.IsActive(features.CheckpointEnabled()) {
 		return task.NewTaskRunner(&setupAndValidate{}, c.writer, task.WithCheckpointFile()).RunTask(ctx, commandContext)
 	}
