@@ -64,13 +64,13 @@ function eksa-version::get_next_eksa_version_for_ancestor() {
         #  If the branch is main, then get the latest tag by date and
         # bump one minor version and use patch 0
         
-        latest_tag=$(git describe --tags "$(git rev-list --tags --max-count=1)")
+        latest_tag=$(git describe --tags --exclude='weekly.*' "$(git rev-list --tags --max-count=1)")
         
         release_version=$(echo "${latest_tag}" | awk -F. -v OFS=. '{$2++; $3=0; print}')
     else
         # For release branhc, get the latest tag that matches current commit
         # and bump the patch version
-        latest_tag=$(git describe --tags --abbrev=0)
+        latest_tag=$(git describe --tags --exclude='weekly.*' --abbrev=0)
         release_version=$(echo "${latest_tag}" | awk -F. -v OFS=. '{$3++; print}')
     fi
 
