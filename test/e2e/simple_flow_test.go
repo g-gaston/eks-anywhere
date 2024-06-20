@@ -1,22 +1,16 @@
+//go:build e2e
+// +build e2e
+
 package e2e
 
 import (
 	"testing"
 
-	anywherev1 "github.com/aws/eks-anywhere/pkg/api/v1alpha1"
 	"github.com/aws/eks-anywhere/test/framework"
 )
 
-var allKubeVersions = []anywherev1.KubernetesVersion{
-	anywherev1.Kube126,
-	anywherev1.Kube127,
-	anywherev1.Kube128,
-	anywherev1.Kube129,
-	anywherev1.Kube130,
-}
-
-func TestSimpleFlow(t *testing.T) {
-	tests := framework.TestCases{
+var _ = runFor("TestSimpleFlow",
+	framework.TestGroups{
 		framework.DockerTests{
 			KubeVersions: allKubeVersions,
 		},
@@ -28,9 +22,11 @@ func TestSimpleFlow(t *testing.T) {
 			KubeVersions: allKubeVersions,
 			OSs:          []framework.OS{framework.RedHat8, framework.RedHat9},
 		},
-	}
+	},
+)
 
-	for _, tc := range tests.GenerateTestCases() {
+func TestSimpleFlow(t *testing.T) {
+	for _, tc := range testsFor(t) {
 		t.Run(tc.Name(), func(t *testing.T) {
 			provider := tc.NewProvider(t)
 			test := framework.NewClusterE2ETest(

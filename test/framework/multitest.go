@@ -17,9 +17,9 @@ func (tc TestCase) Name() string {
 	return tc.ProviderName + "-" + string(tc.OS) + "-" + string(tc.KubeVersion)
 }
 
-type TestCases []ProviderTests
+type TestGroups []TestGroup
 
-func (tcs TestCases) GenerateTestCases() []TestCase {
+func (tcs TestGroups) GenerateTestCases() []TestCase {
 	var testCases []TestCase
 	for _, tc := range tcs {
 		testCases = append(testCases, tc.GenerateTestCases()...)
@@ -28,7 +28,7 @@ func (tcs TestCases) GenerateTestCases() []TestCase {
 	return testCases
 }
 
-type ProviderTests interface {
+type TestGroup interface {
 	GenerateTestCases() []TestCase
 }
 
