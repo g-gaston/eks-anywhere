@@ -151,6 +151,10 @@ func NewCloudStack(t *testing.T, opts ...CloudStackOpt) *CloudStack {
 	return c
 }
 
+func NewCloudStackProvider(t *testing.T) Provider {
+	return NewCloudStack(t)
+}
+
 func WithCloudStackWorkerNodeGroup(name string, workerNodeGroup *WorkerNodeGroup, fillers ...api.CloudStackMachineConfigFiller) CloudStackOpt {
 	return func(c *CloudStack) {
 		c.fillers = append(c.fillers, cloudStackMachineConfig(name, fillers...))

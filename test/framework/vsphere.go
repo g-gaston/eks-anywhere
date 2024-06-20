@@ -128,6 +128,10 @@ func NewVSphere(t *testing.T, opts ...VSphereOpt) *VSphere {
 	return v
 }
 
+func NewVSphereProvider(t *testing.T) Provider {
+	return NewVSphere(t)
+}
+
 // withVSphereKubeVersionAndOS returns a VSphereOpt that adds API fillers to use a vSphere template for
 // the specified OS family and version (default if not provided), corresponding to a particular
 // Kubernetes version, in addition to configuring all machine configs to use this OS family.

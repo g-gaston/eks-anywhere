@@ -31,6 +31,10 @@ func NewDocker(t *testing.T) *Docker {
 	}
 }
 
+func NewDockerProvider(t *testing.T) Provider {
+	return NewDocker(t)
+}
+
 // Name implements the Provider interface.
 func (d *Docker) Name() string {
 	return "docker"
